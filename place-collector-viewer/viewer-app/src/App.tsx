@@ -1237,7 +1237,7 @@ function App() {
       const name = row.name || "(이름 없음)"
       if (row.mapUrl) {
         return (
-          <a className="text-primary hover:underline" href={row.mapUrl} target="_blank" rel="noreferrer noopener">
+          <a data-ui="a" className="text-primary hover:underline" href={row.mapUrl} target="_blank" rel="noreferrer noopener">
             {name}
           </a>
         )
@@ -1268,14 +1268,14 @@ function App() {
     header: ({ column: tableColumn }) => {
       const marker = getSortMarker(tableColumn.id)
       return (
-        <Button
+        <Button data-ui="button"
           type="button"
           variant="ghost"
           className="h-auto w-full justify-start px-0 py-0 text-xs font-semibold"
           onClick={tableColumn.getToggleSortingHandler()}
         >
-          <span>{column.label}</span>
-          {marker ? <Badge variant="outline" className="ml-1 text-[10px]">{marker}</Badge> : null}
+          <span data-ui="span">{column.label}</span>
+          {marker ? <Badge data-ui="badge" variant="outline" className="ml-1 text-[10px]">{marker}</Badge> : null}
         </Button>
       )
     },
@@ -1294,7 +1294,7 @@ function App() {
           classNames.push("text-muted-foreground font-semibold")
         }
       }
-      return <span className={classNames.join(" ")}>{renderCell(row.original, column)}</span>
+      return <span data-ui="span" className={classNames.join(" ")}>{renderCell(row.original, column)}</span>
     },
   }))
 
@@ -1309,53 +1309,53 @@ function App() {
   })
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_0%_0%,rgba(15,118,110,0.14),transparent_42%),radial-gradient(circle_at_100%_0%,rgba(59,130,246,0.14),transparent_40%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] p-3 md:p-5">
-      <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-3">
-        <div className="grid gap-3 xl:grid-cols-[1.2fr_1fr]">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-3xl font-bold tracking-tight">플레이스 데이터그리드</CardTitle>
-              <CardDescription className="text-sm leading-relaxed">
+    <div data-ui="div" className="min-h-screen bg-[radial-gradient(circle_at_0%_0%,rgba(15,118,110,0.14),transparent_42%),radial-gradient(circle_at_100%_0%,rgba(59,130,246,0.14),transparent_40%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] p-3 md:p-5">
+      <div data-ui="div" className="mx-auto flex w-full max-w-[1600px] flex-col gap-3">
+        <div data-ui="div" className="grid gap-3 xl:grid-cols-[1.2fr_1fr]">
+          <Card data-ui="card">
+            <CardHeader data-ui="card-header">
+              <CardTitle data-ui="card-title" className="text-3xl font-bold tracking-tight">플레이스 데이터그리드</CardTitle>
+              <CardDescription data-ui="card-description" className="text-sm leading-relaxed">
                 React + shadcn/ui 기반 뷰어입니다. JSON(객체/배열) 로드 후 정렬, 복합 필터, 기준점 거리 계산,
                 고급 규칙 필터를 지원합니다.
               </CardDescription>
             </CardHeader>
           </Card>
-          <Card>
-            <CardHeader className="gap-3">
-              <Badge variant="secondary" className="w-fit text-xs">1. JSON 업로드</Badge>
-              <Badge variant="secondary" className="w-fit text-xs">2. 조건 선택</Badge>
-              <Badge variant="secondary" className="w-fit text-xs">3. 결과 확인</Badge>
+          <Card data-ui="card">
+            <CardHeader data-ui="card-header" className="gap-3">
+              <Badge data-ui="badge" variant="secondary" className="w-fit text-xs">1. JSON 업로드</Badge>
+              <Badge data-ui="badge" variant="secondary" className="w-fit text-xs">2. 조건 선택</Badge>
+              <Badge data-ui="badge" variant="secondary" className="w-fit text-xs">3. 결과 확인</Badge>
             </CardHeader>
           </Card>
         </div>
 
-        <div className="grid gap-3 xl:grid-cols-[430px_minmax(0,1fr)]">
-          <Card className="border-slate-200/80 shadow-xl shadow-slate-900/5">
-            <CardContent className="p-4">
-              <ScrollArea className="h-[min(72vh,860px)] pr-3">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-muted-foreground" htmlFor="fileInput">JSON 파일</label>
-                    <Input id="fileInput" ref={fileInputRef} type="file" accept=".json,application/json" onChange={handleFileChange} />
+        <div data-ui="div" className="grid gap-3 xl:grid-cols-[430px_minmax(0,1fr)]">
+          <Card data-ui="card" className="border-slate-200/80 shadow-xl shadow-slate-900/5">
+            <CardContent data-ui="card-content" className="p-4">
+              <ScrollArea data-ui="scroll-area" className="h-[min(72vh,860px)] pr-3">
+                <div data-ui="div" className="space-y-4">
+                  <div data-ui="div" className="space-y-2">
+                    <label data-ui="label" className="text-xs font-semibold text-muted-foreground" htmlFor="fileInput">JSON 파일</label>
+                    <Input data-ui="input" id="fileInput" ref={fileInputRef} type="file" accept=".json,application/json" onChange={handleFileChange} />
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-muted-foreground" htmlFor="searchInput">통합 검색</label>
-                    <Input
+                  <div data-ui="div" className="space-y-2">
+                    <label data-ui="label" className="text-xs font-semibold text-muted-foreground" htmlFor="searchInput">통합 검색</label>
+                    <Input data-ui="input"
                       id="searchInput"
                       value={searchInput}
                       onChange={(event) => setSearchInput(event.target.value)}
                       placeholder="예: 파스타, 주차, 광교중앙역"
                     />
-                    <p className="text-[11px] text-muted-foreground">콤마(,)로 여러 키워드를 입력하면 OR 조건으로 검색합니다.</p>
+                    <p data-ui="p" className="text-[11px] text-muted-foreground">콤마(,)로 여러 키워드를 입력하면 OR 조건으로 검색합니다.</p>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-muted-foreground">최소 리뷰 수</label>
-                    <div className="flex flex-wrap gap-2" id="minReviewsChips">
+                  <div data-ui="div" className="space-y-2">
+                    <label data-ui="label" className="text-xs font-semibold text-muted-foreground">최소 리뷰 수</label>
+                    <div data-ui="div" className="flex flex-wrap gap-2" id="minReviewsChips">
                       {MIN_REVIEW_PRESETS.map((preset) => (
-                        <Button
+                        <Button data-ui="button"
                           key={preset.value}
                           type="button"
                           size="sm"
@@ -1368,11 +1368,11 @@ function App() {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-muted-foreground">최대 거리(m)</label>
-                    <div className="flex flex-wrap gap-2" id="maxDistanceChips">
+                  <div data-ui="div" className="space-y-2">
+                    <label data-ui="label" className="text-xs font-semibold text-muted-foreground">최대 거리(m)</label>
+                    <div data-ui="div" className="flex flex-wrap gap-2" id="maxDistanceChips">
                       {MAX_DISTANCE_PRESETS.map((preset) => (
-                        <Button
+                        <Button data-ui="button"
                           key={preset.label}
                           type="button"
                           size="sm"
@@ -1385,12 +1385,12 @@ function App() {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-muted-foreground" htmlFor="centerSearchInput">
+                  <div data-ui="div" className="space-y-2">
+                    <label data-ui="label" className="text-xs font-semibold text-muted-foreground" htmlFor="centerSearchInput">
                       거리 기준 주소/건물명
                     </label>
-                    <form id="centerSearchForm" className="grid gap-2 md:grid-cols-[1fr_1.2fr_auto]" onSubmit={handleCenterFormSubmit}>
-                      <Input
+                    <form data-ui="form" id="centerSearchForm" className="grid gap-2 md:grid-cols-[1fr_1.2fr_auto]" onSubmit={handleCenterFormSubmit}>
+                      <Input data-ui="input"
                         id="centerSearchInput"
                         value={centerSearchInput}
                         onChange={(event) => setCenterSearchInput(event.target.value)}
@@ -1399,8 +1399,8 @@ function App() {
                         }}
                         placeholder="예: 상현역, 광교호수공원"
                       />
-                      <div id="centerSearchSelectRoot" className="w-full">
-                        <Select
+                      <div data-ui="div" id="centerSearchSelectRoot" className="w-full">
+                        <Select data-ui="select"
                           open={centerSearchSelectOpen}
                           onOpenChange={(open) => {
                             if (!centerSearchResults.length && open) {
@@ -1417,27 +1417,27 @@ function App() {
                             applyCenterSearchResultById(value)
                           }}
                         >
-                          <SelectTrigger id="centerSearchSelectTrigger" className="w-full">
-                            <SelectValue
+                          <SelectTrigger data-ui="select-trigger" id="centerSearchSelectTrigger" className="w-full">
+                            <SelectValue data-ui="select-value"
                               id="centerSearchSelectValue"
                               placeholder={centerSelectPlaceholder}
                             />
                           </SelectTrigger>
-                          <SelectContent id="centerSearchOptions" className="max-h-72">
+                          <SelectContent data-ui="select-content" id="centerSearchOptions" className="max-h-72">
                             {centerSearchResults.map((item, idx) => (
-                              <SelectItem key={item.id} value={item.id}>
+                              <SelectItem data-ui="select-item" key={item.id} value={item.id}>
                                 {toCenterSearchOptionText(item, idx)}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       </div>
-                      <Button id="searchCenterBtn" type="submit" variant="secondary" className="w-full md:w-auto">
-                        {centerSearchLoading ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
+                      <Button data-ui="button" id="searchCenterBtn" type="submit" variant="secondary" className="w-full md:w-auto">
+                        {centerSearchLoading ? <Loader2 data-ui="loader2" className="size-4 animate-spin" /> : <Search data-ui="search" className="size-4" />}
                         {centerSearchLoading ? "검색중..." : "검색"}
                       </Button>
                     </form>
-                    <p
+                    <p data-ui="p"
                       id="centerSearchStatus"
                       data-tone={centerSearchStatus.tone}
                       className={[
@@ -1451,44 +1451,44 @@ function App() {
                     </p>
                   </div>
 
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <label className="text-xs font-semibold text-muted-foreground" htmlFor="refDate">기준 날짜</label>
-                      <Input id="refDate" type="date" value={refDate} onChange={(event) => setRefDate(event.target.value)} />
+                  <div data-ui="div" className="grid gap-2 sm:grid-cols-2">
+                    <div data-ui="div" className="space-y-2">
+                      <label data-ui="label" className="text-xs font-semibold text-muted-foreground" htmlFor="refDate">기준 날짜</label>
+                      <Input data-ui="input" id="refDate" type="date" value={refDate} onChange={(event) => setRefDate(event.target.value)} />
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-semibold text-muted-foreground" htmlFor="refTime">기준 시간</label>
-                      <Input id="refTime" type="time" step={60} value={refTime} onChange={(event) => setRefTime(event.target.value)} />
+                    <div data-ui="div" className="space-y-2">
+                      <label data-ui="label" className="text-xs font-semibold text-muted-foreground" htmlFor="refTime">기준 시간</label>
+                      <Input data-ui="input" id="refTime" type="time" step={60} value={refTime} onChange={(event) => setRefTime(event.target.value)} />
                     </div>
                   </div>
 
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <label className="text-xs font-semibold text-muted-foreground">기준시각 영업 상태</label>
-                      <Select value={refOpenMode} onValueChange={setRefOpenMode}>
-                        <SelectTrigger id="refOpenMode" className="w-full">
-                          <SelectValue placeholder="전체" />
+                  <div data-ui="div" className="grid gap-2 sm:grid-cols-2">
+                    <div data-ui="div" className="space-y-2">
+                      <label data-ui="label" className="text-xs font-semibold text-muted-foreground">기준시각 영업 상태</label>
+                      <Select data-ui="select" value={refOpenMode} onValueChange={setRefOpenMode}>
+                        <SelectTrigger data-ui="select-trigger" id="refOpenMode" className="w-full">
+                          <SelectValue data-ui="select-value" placeholder="전체" />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">전체</SelectItem>
-                          <SelectItem value="open">영업중만</SelectItem>
-                          <SelectItem value="break">브레이크타임만</SelectItem>
-                          <SelectItem value="closed">영업종료만</SelectItem>
-                          <SelectItem value="unknown">계산불가/휴무만</SelectItem>
+                        <SelectContent data-ui="select-content">
+                          <SelectItem data-ui="select-item" value="all">전체</SelectItem>
+                          <SelectItem data-ui="select-item" value="open">영업중만</SelectItem>
+                          <SelectItem data-ui="select-item" value="break">브레이크타임만</SelectItem>
+                          <SelectItem data-ui="select-item" value="closed">영업종료만</SelectItem>
+                          <SelectItem data-ui="select-item" value="unknown">계산불가/휴무만</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="text-xs font-semibold text-muted-foreground">최상위 키워드</label>
-                      <Select value={topKeywordFilter} onValueChange={setTopKeywordFilter}>
-                        <SelectTrigger id="topKeywordFilter" className="w-full">
-                          <SelectValue placeholder="전체" />
+                    <div data-ui="div" className="space-y-2">
+                      <label data-ui="label" className="text-xs font-semibold text-muted-foreground">최상위 키워드</label>
+                      <Select data-ui="select" value={topKeywordFilter} onValueChange={setTopKeywordFilter}>
+                        <SelectTrigger data-ui="select-trigger" id="topKeywordFilter" className="w-full">
+                          <SelectValue data-ui="select-value" placeholder="전체" />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">전체</SelectItem>
+                        <SelectContent data-ui="select-content">
+                          <SelectItem data-ui="select-item" value="all">전체</SelectItem>
                           {topKeywordCatalog.map((item) => (
-                            <SelectItem key={item.keyword} value={item.keyword}>
+                            <SelectItem data-ui="select-item" key={item.keyword} value={item.keyword}>
                               {item.keyword} ({numFmt.format(item.count)})
                             </SelectItem>
                           ))}
@@ -1497,73 +1497,73 @@ function App() {
                     </div>
                   </div>
 
-                  <Button id="resetBtn" type="button" variant="outline" className="w-full" onClick={resetFilters}>
-                    <RotateCcw className="size-4" /> 필터 초기화
+                  <Button data-ui="button" id="resetBtn" type="button" variant="outline" className="w-full" onClick={resetFilters}>
+                    <RotateCcw data-ui="rotate-ccw" className="size-4" /> 필터 초기화
                   </Button>
 
-                  <Separator />
+                  <Separator data-ui="separator" />
 
-                  <div id="sortChips" className="flex flex-wrap gap-2">
+                  <div data-ui="div" id="sortChips" className="flex flex-wrap gap-2">
                     {sorting.map((item, idx) => {
                       const col = columns.find((c) => String(c.key) === item.id)
                       return (
-                        <Badge key={item.id} variant="secondary" className="gap-2">
+                        <Badge data-ui="badge" key={item.id} variant="secondary" className="gap-2">
                           {idx + 1}. {col ? col.label : item.id} {item.desc ? "▼" : "▲"}
-                          <Button
+                          <Button data-ui="button"
                             type="button"
                             variant="ghost"
                             size="icon"
                             className="size-5 text-destructive hover:text-destructive"
                             onClick={() => setSorting((prev) => prev.filter((rule) => rule.id !== item.id))}
                           >
-                            <X className="size-3" />
+                            <X data-ui="x" className="size-3" />
                           </Button>
                         </Badge>
                       )
                     })}
                   </div>
 
-                  <Accordion
+                  <Accordion data-ui="accordion"
                     type="multiple"
                     value={accordionValues}
                     onValueChange={setAccordionValues}
                     className="rounded-lg border bg-muted/30 px-3"
                   >
-                    <AccordionItem value="convenience">
-                      <AccordionTrigger id="convenienceAccordionTrigger" className="py-3">
-                        <div className="flex flex-col gap-1 text-left">
-                          <span className="font-semibold">편의시설 및 서비스 필터</span>
-                          <span className="text-xs text-muted-foreground">옵션/편의시설 정보를 합쳐 필터합니다.</span>
+                    <AccordionItem data-ui="accordion-item" value="convenience">
+                      <AccordionTrigger data-ui="accordion-trigger" id="convenienceAccordionTrigger" className="py-3">
+                        <div data-ui="div" className="flex flex-col gap-1 text-left">
+                          <span data-ui="span" className="font-semibold">편의시설 및 서비스 필터</span>
+                          <span data-ui="span" className="text-xs text-muted-foreground">옵션/편의시설 정보를 합쳐 필터합니다.</span>
                         </div>
                       </AccordionTrigger>
-                      <AccordionContent id="convenienceAccordionContent" className="space-y-3">
-                        <div className="flex flex-wrap items-end gap-2">
-                          <div className="min-w-[180px] flex-1 space-y-2">
-                            <label className="text-xs font-semibold text-muted-foreground">선택 방식</label>
-                            <Select value={convenienceMode} onValueChange={(value: RuleMode) => setConvenienceMode(value)}>
-                              <SelectTrigger id="convenienceMode" className="w-full">
-                                <SelectValue placeholder="모두 포함" />
+                      <AccordionContent data-ui="accordion-content" id="convenienceAccordionContent" className="space-y-3">
+                        <div data-ui="div" className="flex flex-wrap items-end gap-2">
+                          <div data-ui="div" className="min-w-[180px] flex-1 space-y-2">
+                            <label data-ui="label" className="text-xs font-semibold text-muted-foreground">선택 방식</label>
+                            <Select data-ui="select" value={convenienceMode} onValueChange={(value: RuleMode) => setConvenienceMode(value)}>
+                              <SelectTrigger data-ui="select-trigger" id="convenienceMode" className="w-full">
+                                <SelectValue data-ui="select-value" placeholder="모두 포함" />
                               </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="all">모두 포함</SelectItem>
-                                <SelectItem value="any">하나 이상 포함</SelectItem>
+                              <SelectContent data-ui="select-content">
+                                <SelectItem data-ui="select-item" value="all">모두 포함</SelectItem>
+                                <SelectItem data-ui="select-item" value="any">하나 이상 포함</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
-                          <Button id="clearConvenienceBtn" variant="outline" type="button" onClick={clearConvenience}>
+                          <Button data-ui="button" id="clearConvenienceBtn" variant="outline" type="button" onClick={clearConvenience}>
                             선택 해제
                           </Button>
                         </div>
-                        <div id="convenienceChips" className="flex flex-wrap gap-2">
+                        <div data-ui="div" id="convenienceChips" className="flex flex-wrap gap-2">
                           {!convenienceCatalog.length ? (
-                            <div className="rounded-md border border-dashed bg-background/80 px-3 py-2 text-xs text-muted-foreground">
+                            <div data-ui="div" className="rounded-md border border-dashed bg-background/80 px-3 py-2 text-xs text-muted-foreground">
                               편의시설 데이터가 없습니다.
                             </div>
                           ) : (
                             convenienceCatalog.map((item) => {
                               const active = selectedConveniences.includes(item.name)
                               return (
-                                <Button
+                                <Button data-ui="button"
                                   key={item.name}
                                   type="button"
                                   size="sm"
@@ -1579,38 +1579,38 @@ function App() {
                       </AccordionContent>
                     </AccordionItem>
 
-                    <AccordionItem value="advanced">
-                      <AccordionTrigger id="advancedAccordionTrigger" className="py-3">
-                        <div className="flex flex-col gap-1 text-left">
-                          <span className="font-semibold">고급 필터</span>
-                          <span className="text-xs text-muted-foreground">파생/원본 필드에 규칙 기반 조건을 추가합니다.</span>
+                    <AccordionItem data-ui="accordion-item" value="advanced">
+                      <AccordionTrigger data-ui="accordion-trigger" id="advancedAccordionTrigger" className="py-3">
+                        <div data-ui="div" className="flex flex-col gap-1 text-left">
+                          <span data-ui="span" className="font-semibold">고급 필터</span>
+                          <span data-ui="span" className="text-xs text-muted-foreground">파생/원본 필드에 규칙 기반 조건을 추가합니다.</span>
                         </div>
                       </AccordionTrigger>
-                      <AccordionContent id="advancedAccordionContent" className="space-y-3">
-                        <div className="flex flex-wrap items-end gap-2">
-                          <div className="min-w-[180px] flex-1 space-y-2">
-                            <label className="text-xs font-semibold text-muted-foreground">규칙 결합</label>
-                            <Select value={advMode} onValueChange={(value: RuleMode) => setAdvMode(value)}>
-                              <SelectTrigger id="advMode" className="w-full">
-                                <SelectValue placeholder="모두 일치" />
+                      <AccordionContent data-ui="accordion-content" id="advancedAccordionContent" className="space-y-3">
+                        <div data-ui="div" className="flex flex-wrap items-end gap-2">
+                          <div data-ui="div" className="min-w-[180px] flex-1 space-y-2">
+                            <label data-ui="label" className="text-xs font-semibold text-muted-foreground">규칙 결합</label>
+                            <Select data-ui="select" value={advMode} onValueChange={(value: RuleMode) => setAdvMode(value)}>
+                              <SelectTrigger data-ui="select-trigger" id="advMode" className="w-full">
+                                <SelectValue data-ui="select-value" placeholder="모두 일치" />
                               </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="all">모두 일치</SelectItem>
-                                <SelectItem value="any">하나 이상 일치</SelectItem>
+                              <SelectContent data-ui="select-content">
+                                <SelectItem data-ui="select-item" value="all">모두 일치</SelectItem>
+                                <SelectItem data-ui="select-item" value="any">하나 이상 일치</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
-                          <Button id="addRuleBtn" type="button" onClick={addAdvancedRule}>규칙 추가</Button>
-                          <Button id="clearRulesBtn" type="button" variant="outline" onClick={clearAdvancedRules}>규칙 전체 삭제</Button>
+                          <Button data-ui="button" id="addRuleBtn" type="button" onClick={addAdvancedRule}>규칙 추가</Button>
+                          <Button data-ui="button" id="clearRulesBtn" type="button" variant="outline" onClick={clearAdvancedRules}>규칙 전체 삭제</Button>
                         </div>
 
-                        <div id="ruleList" className="space-y-2">
+                        <div data-ui="div" id="ruleList" className="space-y-2">
                           {!filterFields.length ? (
-                            <div className="rounded-md border border-dashed bg-background/80 px-3 py-2 text-xs text-muted-foreground">
+                            <div data-ui="div" className="rounded-md border border-dashed bg-background/80 px-3 py-2 text-xs text-muted-foreground">
                               파일을 먼저 불러오면 필드 목록이 생성됩니다.
                             </div>
                           ) : !advancedRules.length ? (
-                            <div className="rounded-md border border-dashed bg-background/80 px-3 py-2 text-xs text-muted-foreground">
+                            <div data-ui="div" className="rounded-md border border-dashed bg-background/80 px-3 py-2 text-xs text-muted-foreground">
                               규칙이 없습니다. 규칙 추가 버튼으로 필터 조건을 추가하세요.
                             </div>
                           ) : (
@@ -1620,37 +1620,37 @@ function App() {
                               const inputType = (def?.type || "text") === "number" ? "number" : "text"
 
                               return (
-                                <div
+                                <div data-ui="div"
                                   key={rule.id}
                                   className="grid gap-2 rounded-md border bg-background p-2 sm:grid-cols-[minmax(220px,1.3fr)_minmax(132px,0.8fr)_minmax(120px,1fr)_minmax(120px,1fr)_auto]"
                                 >
-                                  <Select value={rule.field} onValueChange={(value) => updateRuleField(rule.id, value)}>
-                                    <SelectTrigger className="w-full">
-                                      <SelectValue />
+                                  <Select data-ui="select" value={rule.field} onValueChange={(value) => updateRuleField(rule.id, value)}>
+                                    <SelectTrigger data-ui="select-trigger" className="w-full">
+                                      <SelectValue data-ui="select-value" />
                                     </SelectTrigger>
-                                    <SelectContent className="max-h-80">
+                                    <SelectContent data-ui="select-content" className="max-h-80">
                                       {filterFields.map((field) => (
-                                        <SelectItem key={field.key} value={field.key}>
+                                        <SelectItem data-ui="select-item" key={field.key} value={field.key}>
                                           {field.label} [{getTypeLabel(field.type)}]
                                         </SelectItem>
                                       ))}
                                     </SelectContent>
                                   </Select>
 
-                                  <Select value={rule.op} onValueChange={(value) => updateRuleOp(rule.id, value)}>
-                                    <SelectTrigger className="w-full">
-                                      <SelectValue />
+                                  <Select data-ui="select" value={rule.op} onValueChange={(value) => updateRuleOp(rule.id, value)}>
+                                    <SelectTrigger data-ui="select-trigger" className="w-full">
+                                      <SelectValue data-ui="select-value" />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent data-ui="select-content">
                                       {ops.map((op) => (
-                                        <SelectItem key={op.value} value={op.value}>
+                                        <SelectItem data-ui="select-item" key={op.value} value={op.value}>
                                           {op.label}
                                         </SelectItem>
                                       ))}
                                     </SelectContent>
                                   </Select>
 
-                                  <Input
+                                  <Input data-ui="input"
                                     type={inputType}
                                     step="any"
                                     placeholder="값"
@@ -1659,7 +1659,7 @@ function App() {
                                     className={!opNeedsValue(rule.op) ? "hidden" : ""}
                                   />
 
-                                  <Input
+                                  <Input data-ui="input"
                                     type={inputType}
                                     step="any"
                                     placeholder="끝값"
@@ -1668,7 +1668,7 @@ function App() {
                                     className={!opNeedsSecondValue(rule.op) ? "hidden" : ""}
                                   />
 
-                                  <Button type="button" variant="outline" onClick={() => removeAdvancedRule(rule.id)}>
+                                  <Button data-ui="button" type="button" variant="outline" onClick={() => removeAdvancedRule(rule.id)}>
                                     삭제
                                   </Button>
                                 </div>
@@ -1684,70 +1684,70 @@ function App() {
             </CardContent>
           </Card>
 
-          <Card className="border-slate-200/80 shadow-xl shadow-slate-900/5">
-            <CardHeader className="space-y-3">
-              <div id="status" className="space-y-2">
+          <Card data-ui="card" className="border-slate-200/80 shadow-xl shadow-slate-900/5">
+            <CardHeader data-ui="card-header" className="space-y-3">
+              <div data-ui="div" id="status" className="space-y-2">
                 {statusError ? (
-                  <div className="text-sm font-medium text-red-600">{statusError}</div>
+                  <div data-ui="div" className="text-sm font-medium text-red-600">{statusError}</div>
                 ) : (
                   <>
-                    <div className="text-sm text-muted-foreground">
-                      데이터 <strong>{numFmt.format(viewRows.length)}</strong> / {numFmt.format(rows.length)}개
+                    <div data-ui="div" className="text-sm text-muted-foreground">
+                      데이터 <strong data-ui="strong">{numFmt.format(viewRows.length)}</strong> / {numFmt.format(rows.length)}개
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div data-ui="div" className="flex flex-wrap gap-2">
                       {statusBadges.length ? (
                         statusBadges.map((label) => (
-                          <Badge key={label} variant="secondary">{label}</Badge>
+                          <Badge data-ui="badge" key={label} variant="secondary">{label}</Badge>
                         ))
                       ) : (
-                        <Badge variant="outline">필터 없음</Badge>
+                        <Badge data-ui="badge" variant="outline">필터 없음</Badge>
                       )}
                     </div>
                   </>
                 )}
               </div>
             </CardHeader>
-            <CardContent className="pb-4">
-              <ScrollArea className="h-[min(72vh,860px)] rounded-md border bg-background md:hidden">
-                <div className="space-y-2 p-2">
+            <CardContent data-ui="card-content" className="pb-4">
+              <ScrollArea data-ui="scroll-area" className="h-[min(72vh,860px)] rounded-md border bg-background md:hidden">
+                <div data-ui="div" className="space-y-2 p-2">
                   {!table.getRowModel().rows.length ? (
-                    <div className="py-8 text-center text-sm text-muted-foreground">
+                    <div data-ui="div" className="py-8 text-center text-sm text-muted-foreground">
                       데이터가 없습니다. 파일을 불러오거나 필터를 완화해 주세요.
                     </div>
                   ) : (
                     table.getRowModel().rows.map((rowModel) => {
                       const row = rowModel.original
                       return (
-                        <div key={rowModel.id} className="space-y-2 rounded-lg border bg-card p-3">
-                          <div className="flex items-start justify-between gap-2">
+                        <div data-ui="div" key={rowModel.id} className="space-y-2 rounded-lg border bg-card p-3">
+                          <div data-ui="div" className="flex items-start justify-between gap-2">
                             {row.mapUrl ? (
-                              <a className="font-semibold text-primary hover:underline" href={row.mapUrl} target="_blank" rel="noreferrer noopener">
+                              <a data-ui="a" className="font-semibold text-primary hover:underline" href={row.mapUrl} target="_blank" rel="noreferrer noopener">
                                 {row.name || "(이름 없음)"}
                               </a>
                             ) : (
-                              <span className="font-semibold">{row.name || "(이름 없음)"}</span>
+                              <span data-ui="span" className="font-semibold">{row.name || "(이름 없음)"}</span>
                             )}
-                            <Badge variant="outline">{row.openAtRefLabel || "-"}</Badge>
+                            <Badge data-ui="badge" variant="outline">{row.openAtRefLabel || "-"}</Badge>
                           </div>
-                          <div className="grid grid-cols-2 gap-2 text-xs">
-                            <div className="space-y-1">
-                              <div className="text-muted-foreground">카테고리</div>
-                              <div className="break-words">{row.category || "-"}</div>
+                          <div data-ui="div" className="grid grid-cols-2 gap-2 text-xs">
+                            <div data-ui="div" className="space-y-1">
+                              <div data-ui="div" className="text-muted-foreground">카테고리</div>
+                              <div data-ui="div" className="break-words">{row.category || "-"}</div>
                             </div>
-                            <div className="space-y-1">
-                              <div className="text-muted-foreground">리뷰수</div>
-                              <div className="tabular-nums">{numFmt.format(row.reviewCount)}</div>
+                            <div data-ui="div" className="space-y-1">
+                              <div data-ui="div" className="text-muted-foreground">리뷰수</div>
+                              <div data-ui="div" className="tabular-nums">{numFmt.format(row.reviewCount)}</div>
                             </div>
-                            <div className="space-y-1">
-                              <div className="text-muted-foreground">거리</div>
-                              <div className="tabular-nums">{row.distanceM == null ? "-" : `${numFmt.format(row.distanceM)}m`}</div>
+                            <div data-ui="div" className="space-y-1">
+                              <div data-ui="div" className="text-muted-foreground">거리</div>
+                              <div data-ui="div" className="tabular-nums">{row.distanceM == null ? "-" : `${numFmt.format(row.distanceM)}m`}</div>
                             </div>
-                            <div className="space-y-1">
-                              <div className="text-muted-foreground">키워드</div>
-                              <div className="break-words">{row.topKeyword || "-"}</div>
+                            <div data-ui="div" className="space-y-1">
+                              <div data-ui="div" className="text-muted-foreground">키워드</div>
+                              <div data-ui="div" className="break-words">{row.topKeyword || "-"}</div>
                             </div>
                           </div>
-                          <div className="text-xs text-muted-foreground break-words">{row.address || "-"}</div>
+                          <div data-ui="div" className="text-xs text-muted-foreground break-words">{row.address || "-"}</div>
                         </div>
                       )
                     })
@@ -1755,32 +1755,32 @@ function App() {
                 </div>
               </ScrollArea>
 
-              <ScrollArea className="hidden h-[min(72vh,860px)] rounded-md border bg-background md:block">
-                <div className="min-w-[760px]">
-                  <Table>
-                    <TableHeader id="head" className="sticky top-0 z-10 bg-muted/70 backdrop-blur supports-[backdrop-filter]:bg-muted/70">
+              <ScrollArea data-ui="scroll-area" className="hidden h-[min(72vh,860px)] rounded-md border bg-background md:block">
+                <div data-ui="div" className="min-w-[760px]">
+                  <Table data-ui="table">
+                    <TableHeader data-ui="table-header" id="head" className="sticky top-0 z-10 bg-muted/70 backdrop-blur supports-[backdrop-filter]:bg-muted/70">
                       {table.getHeaderGroups().map((headerGroup) => (
-                        <TableRow key={headerGroup.id}>
+                        <TableRow data-ui="table-row" key={headerGroup.id}>
                           {headerGroup.headers.map((header) => (
-                            <TableHead key={header.id}>
+                            <TableHead data-ui="table-head" key={header.id}>
                               {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                             </TableHead>
                           ))}
                         </TableRow>
                       ))}
                     </TableHeader>
-                    <TableBody id="body">
+                    <TableBody data-ui="table-body" id="body">
                       {!table.getRowModel().rows.length ? (
-                        <TableRow>
-                          <TableCell colSpan={columns.length} className="py-8 text-center text-muted-foreground">
+                        <TableRow data-ui="table-row">
+                          <TableCell data-ui="table-cell" colSpan={columns.length} className="py-8 text-center text-muted-foreground">
                             데이터가 없습니다. 파일을 불러오거나 필터를 완화해 주세요.
                           </TableCell>
                         </TableRow>
                       ) : (
                         table.getRowModel().rows.map((row) => (
-                          <TableRow key={row.id}>
+                          <TableRow data-ui="table-row" key={row.id}>
                             {row.getVisibleCells().map((cell) => (
-                              <TableCell key={cell.id}>
+                              <TableCell data-ui="table-cell" key={cell.id}>
                                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
                               </TableCell>
                             ))}
@@ -1790,7 +1790,7 @@ function App() {
                     </TableBody>
                   </Table>
                 </div>
-                <ScrollBar orientation="horizontal" />
+                <ScrollBar data-ui="scroll-bar" orientation="horizontal" />
               </ScrollArea>
             </CardContent>
           </Card>
