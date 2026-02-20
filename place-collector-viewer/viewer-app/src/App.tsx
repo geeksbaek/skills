@@ -4,6 +4,7 @@ import {
   ChevronsUpDown,
   Loader2,
   RotateCcw,
+  SlidersHorizontal,
   X,
 } from "lucide-react"
 import {
@@ -15,16 +16,16 @@ import {
   useReactTable,
 } from "@tanstack/react-table"
 
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Field, FieldDescription, FieldGroup, FieldLabel, FieldSet } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 type ColumnType = "text" | "number" | "boolean"
@@ -264,13 +265,11 @@ const APP_CONTENT_CLASS = "mx-auto flex w-full max-w-[1600px] flex-col gap-4 xl:
 const APP_GRID_CLASS = "grid gap-4 xl:min-h-0 xl:flex-1 xl:grid-cols-[430px_minmax(0,1fr)]"
 const CARD_HEADER_CLASS = "space-y-2 px-4 py-0 md:px-5"
 const CARD_CONTENT_CLASS = "min-w-0 px-4 py-0 md:px-5 xl:flex xl:min-h-0 xl:flex-1"
-const PANEL_STACK_CLASS = "min-w-0 w-full max-w-full space-y-4"
-const FIELD_STACK_CLASS = "min-w-0 space-y-2"
+const PANEL_STACK_CLASS = "min-w-0 w-full max-w-full gap-4"
+const FIELD_STACK_CLASS = "min-w-0 flex flex-col gap-2"
 const CHIP_ROW_CLASS = "flex flex-wrap gap-2"
 const TWO_COL_GRID_CLASS = "grid gap-3 sm:grid-cols-2"
 const ACTION_ROW_CLASS = "flex flex-wrap items-end gap-3"
-const ACCORDION_CLASS = "rounded-lg border bg-muted/30 px-3 py-1"
-const ACCORDION_CONTENT_STACK_CLASS = "space-y-4"
 const MOBILE_LIST_CLASS = "space-y-3 p-3"
 const MOBILE_ROW_CARD_CLASS = "space-y-3 rounded-lg border bg-card p-3"
 const CENTER_SEARCH_MIN_QUERY = 2
@@ -878,8 +877,8 @@ function App() {
   const [nextRuleId, setNextRuleId] = useState(1)
 
   const [statusError, setStatusError] = useState<string | null>(null)
-
-  const [accordionValues, setAccordionValues] = useState<string[]>(["convenience", "advanced"])
+  const [convenienceDialogOpen, setConvenienceDialogOpen] = useState(false)
+  const [advancedDialogOpen, setAdvancedDialogOpen] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const centerSearchSeqRef = useRef(0)
@@ -1243,7 +1242,6 @@ function App() {
     setTopKeywordFilter("all")
     setConvenienceMode("all")
     setAdvMode("all")
-    setAccordionValues(["convenience", "advanced"])
     setSorting([])
     setSelectedConveniences([])
     setAdvancedRules([])
@@ -1347,14 +1345,14 @@ function App() {
                 className="h-[min(72vh,860px)] w-full min-w-0 xl:h-full"
                 viewportClassName="px-2 [&>div]:!block [&>div]:!w-full [&>div]:!min-w-0"
               >
-                <div data-ui="div-022" className={PANEL_STACK_CLASS}>
-                  <div data-ui="div-023" className={FIELD_STACK_CLASS}>
-                    <label data-ui="label-024" className="text-xs font-semibold text-muted-foreground" htmlFor="fileInput">JSON 파일</label>
+                <FieldGroup data-ui="field-group-022" className={PANEL_STACK_CLASS}>
+                  <Field data-ui="field-023" className={FIELD_STACK_CLASS}>
+                    <FieldLabel data-ui="field-label-024" className="text-xs font-semibold text-muted-foreground" htmlFor="fileInput">JSON 파일</FieldLabel>
                     <Input data-ui="input-025" className={ACTIVE_FIELD_CLASS} id="fileInput" ref={fileInputRef} type="file" accept=".json,application/json" onChange={handleFileChange} />
-                  </div>
+                  </Field>
 
-                  <div data-ui="div-026" className={FIELD_STACK_CLASS}>
-                    <label data-ui="label-027" className="text-xs font-semibold text-muted-foreground" htmlFor="searchInput">통합 검색</label>
+                  <Field data-ui="field-026" className={FIELD_STACK_CLASS}>
+                    <FieldLabel data-ui="field-label-027" className="text-xs font-semibold text-muted-foreground" htmlFor="searchInput">통합 검색</FieldLabel>
                     <Input data-ui="input-028"
                       className={ACTIVE_FIELD_CLASS}
                       id="searchInput"
@@ -1362,11 +1360,13 @@ function App() {
                       onChange={(event) => setSearchInput(event.target.value)}
                       placeholder="예: 파스타, 주차, 광교중앙역"
                     />
-                    <p data-ui="p-029" className="text-[11px] text-muted-foreground">콤마(,)로 여러 키워드를 입력하면 OR 조건으로 검색합니다.</p>
-                  </div>
+                    <FieldDescription data-ui="field-desc-029" className="text-[11px] text-muted-foreground">
+                      콤마(,)로 여러 키워드를 입력하면 OR 조건으로 검색합니다.
+                    </FieldDescription>
+                  </Field>
 
-                  <div data-ui="div-030" className={FIELD_STACK_CLASS}>
-                    <label data-ui="label-031" className="text-xs font-semibold text-muted-foreground">최소 리뷰 수</label>
+                  <Field data-ui="field-030" className={FIELD_STACK_CLASS}>
+                    <FieldLabel data-ui="field-label-031" className="text-xs font-semibold text-muted-foreground">최소 리뷰 수</FieldLabel>
                     <div data-ui="div-032" className={CHIP_ROW_CLASS} id="minReviewsChips">
                       {MIN_REVIEW_PRESETS.map((preset) => (
                         <Button data-ui={`min-review-chip-${preset.value}`}
@@ -1380,10 +1380,10 @@ function App() {
                         </Button>
                       ))}
                     </div>
-                  </div>
+                  </Field>
 
-                  <div data-ui="div-034" className={FIELD_STACK_CLASS}>
-                    <label data-ui="label-035" className="text-xs font-semibold text-muted-foreground">최대 거리(m)</label>
+                  <Field data-ui="field-034" className={FIELD_STACK_CLASS}>
+                    <FieldLabel data-ui="field-label-035" className="text-xs font-semibold text-muted-foreground">최대 거리(m)</FieldLabel>
                     <div data-ui="div-036" className={CHIP_ROW_CLASS} id="maxDistanceChips">
                       {MAX_DISTANCE_PRESETS.map((preset) => (
                         <Button data-ui={`max-distance-chip-${preset.value ?? "none"}`}
@@ -1397,12 +1397,12 @@ function App() {
                         </Button>
                       ))}
                     </div>
-                  </div>
+                  </Field>
 
-                  <div data-ui="div-038" className={FIELD_STACK_CLASS}>
-                    <label data-ui="label-039" className="text-xs font-semibold text-muted-foreground" htmlFor="centerSearchSelectTrigger">
+                  <Field data-ui="field-038" className={FIELD_STACK_CLASS}>
+                    <FieldLabel data-ui="field-label-039" className="text-xs font-semibold text-muted-foreground" htmlFor="centerSearchSelectTrigger">
                       거리 기준 주소/건물명
-                    </label>
+                    </FieldLabel>
                     <Popover
                       data-ui="center-combobox-root"
                       open={centerSearchSelectOpen}
@@ -1421,11 +1421,12 @@ function App() {
                           variant="outline"
                           role="combobox"
                           aria-expanded={centerSearchSelectOpen}
-                          className={`w-full max-w-full justify-between overflow-hidden ${ACTIVE_FIELD_CLASS}`}
+                          className={`w-full min-w-0 max-w-full justify-between gap-2 overflow-hidden text-left ${ACTIVE_FIELD_CLASS}`}
                         >
                           <span
                             data-ui="center-combobox-trigger-label"
-                            className={`min-w-0 max-w-full flex-1 truncate text-left ${selectedCenterSearchResult || centerSearchInput.trim() ? "" : "text-muted-foreground"}`}
+                            className={`block min-w-0 max-w-full flex-1 truncate ${selectedCenterSearchResult || centerSearchInput.trim() ? "" : "text-muted-foreground"}`}
+                            title={centerComboboxLabel}
                           >
                             {centerComboboxLabel}
                           </span>
@@ -1465,7 +1466,9 @@ function App() {
                                   key={item.id}
                                   value={item.id}
                                   onSelect={(value) => {
-                                    applyCenterSearchResultById(value)
+                                    if (applyCenterSearchResultById(value)) {
+                                      setCenterSearchSelectOpen(false)
+                                    }
                                   }}
                                 >
                                   <span data-ui={`center-search-option-label-${uiToken(item.id)}`} className="truncate">
@@ -1482,7 +1485,7 @@ function App() {
                         </Command>
                       </PopoverContent>
                     </Popover>
-                    <p data-ui="p-051"
+                    <FieldDescription data-ui="field-desc-051"
                       id="centerSearchStatus"
                       data-tone={centerSearchStatus.tone}
                       className={[
@@ -1493,23 +1496,23 @@ function App() {
                       ].join(" ")}
                     >
                       {centerSearchStatus.message}
-                    </p>
-                  </div>
+                    </FieldDescription>
+                  </Field>
 
                   <div data-ui="div-052" className={TWO_COL_GRID_CLASS}>
-                    <div data-ui="div-053" className={FIELD_STACK_CLASS}>
-                      <label data-ui="label-054" className="text-xs font-semibold text-muted-foreground" htmlFor="refDate">기준 날짜</label>
+                    <Field data-ui="field-053" className={FIELD_STACK_CLASS}>
+                      <FieldLabel data-ui="field-label-054" className="text-xs font-semibold text-muted-foreground" htmlFor="refDate">기준 날짜</FieldLabel>
                       <Input data-ui="input-055" className={ACTIVE_FIELD_CLASS} id="refDate" type="date" value={refDate} onChange={(event) => setRefDate(event.target.value)} />
-                    </div>
-                    <div data-ui="div-056" className={FIELD_STACK_CLASS}>
-                      <label data-ui="label-057" className="text-xs font-semibold text-muted-foreground" htmlFor="refTime">기준 시간</label>
+                    </Field>
+                    <Field data-ui="field-056" className={FIELD_STACK_CLASS}>
+                      <FieldLabel data-ui="field-label-057" className="text-xs font-semibold text-muted-foreground" htmlFor="refTime">기준 시간</FieldLabel>
                       <Input data-ui="input-058" className={ACTIVE_FIELD_CLASS} id="refTime" type="time" step={60} value={refTime} onChange={(event) => setRefTime(event.target.value)} />
-                    </div>
+                    </Field>
                   </div>
 
                   <div data-ui="div-059" className={TWO_COL_GRID_CLASS}>
-                    <div data-ui="div-060" className={FIELD_STACK_CLASS}>
-                      <label data-ui="label-061" className="text-xs font-semibold text-muted-foreground">기준시각 영업 상태</label>
+                    <Field data-ui="field-060" className={FIELD_STACK_CLASS}>
+                      <FieldLabel data-ui="field-label-061" className="text-xs font-semibold text-muted-foreground">기준시각 영업 상태</FieldLabel>
                       <Select data-ui="select-062" value={refOpenMode} onValueChange={setRefOpenMode}>
                         <SelectTrigger data-ui="select-trigger-063" id="refOpenMode" className={`w-full ${ACTIVE_FIELD_CLASS}`}>
                           <SelectValue data-ui="select-value-064" placeholder="전체" />
@@ -1522,10 +1525,10 @@ function App() {
                           <SelectItem data-ui="select-item-070" value="unknown">계산불가/휴무만</SelectItem>
                         </SelectContent>
                       </Select>
-                    </div>
+                    </Field>
 
-                    <div data-ui="div-071" className={FIELD_STACK_CLASS}>
-                      <label data-ui="label-072" className="text-xs font-semibold text-muted-foreground">최상위 키워드</label>
+                    <Field data-ui="field-071" className={FIELD_STACK_CLASS}>
+                      <FieldLabel data-ui="field-label-072" className="text-xs font-semibold text-muted-foreground">최상위 키워드</FieldLabel>
                       <Select data-ui="select-073" value={topKeywordFilter} onValueChange={setTopKeywordFilter}>
                         <SelectTrigger data-ui="select-trigger-074" id="topKeywordFilter" className={`w-full ${ACTIVE_FIELD_CLASS}`}>
                           <SelectValue data-ui="select-value-075" placeholder="전체" />
@@ -1539,14 +1542,12 @@ function App() {
                           ))}
                         </SelectContent>
                       </Select>
-                    </div>
+                    </Field>
                   </div>
 
                   <Button data-ui="button-079" id="resetBtn" type="button" variant="outline" className="w-full" onClick={resetFilters}>
                     <RotateCcw data-ui="rotate-ccw-080" className="size-4" /> 필터 초기화
                   </Button>
-
-                  <Separator data-ui="separator-081" />
 
                   <div data-ui="div-082" id="sortChips" className={CHIP_ROW_CLASS}>
                     {sorting.map((item, idx) => {
@@ -1567,189 +1568,222 @@ function App() {
                       )
                     })}
                   </div>
-
-                  <Accordion data-ui="accordion-086"
-                    type="multiple"
-                    value={accordionValues}
-                    onValueChange={setAccordionValues}
-                    className={ACCORDION_CLASS}
-                  >
-                    <AccordionItem data-ui="accordion-item-087" value="convenience">
-                      <AccordionTrigger data-ui="accordion-trigger-088" id="convenienceAccordionTrigger" className="py-3">
-                        <div data-ui="div-089" className="flex flex-col gap-1 text-left">
-                          <span data-ui="span-090" className="font-semibold">편의시설 및 서비스 필터</span>
-                          <span data-ui="span-091" className="text-xs text-muted-foreground">옵션/편의시설 정보를 합쳐 필터합니다.</span>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent data-ui="accordion-content-092" id="convenienceAccordionContent" className={ACCORDION_CONTENT_STACK_CLASS}>
-                        <div data-ui="div-093" className={ACTION_ROW_CLASS}>
-                          <div data-ui="div-094" className={`min-w-[180px] flex-1 ${FIELD_STACK_CLASS}`}>
-                            <label data-ui="label-095" className="text-xs font-semibold text-muted-foreground">선택 방식</label>
-                            <Select data-ui="select-096" value={convenienceMode} onValueChange={(value: RuleMode) => setConvenienceMode(value)}>
-                              <SelectTrigger data-ui="select-trigger-097" id="convenienceMode" className={`w-full ${ACTIVE_FIELD_CLASS}`}>
-                                <SelectValue data-ui="select-value-098" placeholder="모두 포함" />
-                              </SelectTrigger>
-                              <SelectContent data-ui="select-content-099">
-                                <SelectItem data-ui="select-item-100" value="all">모두 포함</SelectItem>
-                                <SelectItem data-ui="select-item-101" value="any">하나 이상 포함</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <Button data-ui="button-102" id="clearConvenienceBtn" variant="outline" type="button" onClick={clearConvenience}>
-                            선택 해제
-                          </Button>
-                        </div>
-                        <div data-ui="div-103" id="convenienceChips" className={CHIP_ROW_CLASS}>
-                          {!convenienceCatalog.length ? (
-                            <div data-ui="div-104" className="rounded-md border border-dashed bg-background/80 px-3 py-2 text-xs text-muted-foreground">
-                              편의시설 데이터가 없습니다.
-                            </div>
-                          ) : (
-                            convenienceCatalog.map((item, idx) => {
-                              const active = selectedConveniences.includes(item.name)
-                              return (
-                                <Button data-ui={`convenience-chip-${idx}-${uiToken(item.name)}`}
-                                  key={item.name}
-                                  type="button"
-                                  size="sm"
-                                  variant={active ? "default" : "outline"}
-                                  onClick={() => toggleConvenience(item.name)}
-                                >
-                                  {item.name} ({numFmt.format(item.count)})
-                                </Button>
-                              )
-                            })
-                          )}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-
-                    <AccordionItem data-ui="accordion-item-106" value="advanced">
-                      <AccordionTrigger data-ui="accordion-trigger-107" id="advancedAccordionTrigger" className="py-3">
-                        <div data-ui="div-108" className="flex flex-col gap-1 text-left">
-                          <span data-ui="span-109" className="font-semibold">고급 필터</span>
-                          <span data-ui="span-110" className="text-xs text-muted-foreground">파생/원본 필드에 규칙 기반 조건을 추가합니다.</span>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent data-ui="accordion-content-111" id="advancedAccordionContent" className={ACCORDION_CONTENT_STACK_CLASS}>
-                        <div data-ui="div-112" className={ACTION_ROW_CLASS}>
-                          <div data-ui="div-113" className={`min-w-[180px] flex-1 ${FIELD_STACK_CLASS}`}>
-                            <label data-ui="label-114" className="text-xs font-semibold text-muted-foreground">규칙 결합</label>
-                            <Select data-ui="select-115" value={advMode} onValueChange={(value: RuleMode) => setAdvMode(value)}>
-                              <SelectTrigger data-ui="select-trigger-116" id="advMode" className={`w-full ${ACTIVE_FIELD_CLASS}`}>
-                                <SelectValue data-ui="select-value-117" placeholder="모두 일치" />
-                              </SelectTrigger>
-                              <SelectContent data-ui="select-content-118">
-                                <SelectItem data-ui="select-item-119" value="all">모두 일치</SelectItem>
-                                <SelectItem data-ui="select-item-120" value="any">하나 이상 일치</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <Button data-ui="button-121" id="addRuleBtn" type="button" onClick={addAdvancedRule}>규칙 추가</Button>
-                          <Button data-ui="button-122" id="clearRulesBtn" type="button" variant="outline" onClick={clearAdvancedRules}>규칙 전체 삭제</Button>
-                        </div>
-
-                        <div data-ui="div-123" id="ruleList" className="space-y-2">
-                          {!filterFields.length ? (
-                            <div data-ui="div-124" className="rounded-md border border-dashed bg-background/80 px-3 py-2 text-xs text-muted-foreground">
-                              파일을 먼저 불러오면 필드 목록이 생성됩니다.
-                            </div>
-                          ) : !advancedRules.length ? (
-                            <div data-ui="div-125" className="rounded-md border border-dashed bg-background/80 px-3 py-2 text-xs text-muted-foreground">
-                              규칙이 없습니다. 규칙 추가 버튼으로 필터 조건을 추가하세요.
-                            </div>
-                          ) : (
-                            advancedRules.map((rule) => {
-                              const def = getFieldDef(rule.field) || filterFields[0]
-                              const ops = getOpsForType(def?.type || "text")
-                              const inputType = (def?.type || "text") === "number" ? "number" : "text"
-
-                              return (
-                                <div data-ui={`advanced-rule-row-${rule.id}`}
-                                  key={rule.id}
-                                  className="grid gap-3 rounded-md border bg-background p-3 sm:grid-cols-[minmax(220px,1.3fr)_minmax(132px,0.8fr)_minmax(120px,1fr)_minmax(120px,1fr)_auto]"
-                                >
-                                  <Select data-ui={`advanced-rule-field-select-${rule.id}`} value={rule.field} onValueChange={(value) => updateRuleField(rule.id, value)}>
-                                    <SelectTrigger data-ui={`advanced-rule-field-trigger-${rule.id}`} className={`w-full ${ACTIVE_FIELD_CLASS}`}>
-                                      <SelectValue data-ui={`advanced-rule-field-value-${rule.id}`} />
-                                    </SelectTrigger>
-                                    <SelectContent data-ui={`advanced-rule-field-content-${rule.id}`} className="max-h-80">
-                                      {filterFields.map((field, fieldIdx) => (
-                                        <SelectItem data-ui={`advanced-rule-field-option-${rule.id}-${fieldIdx}-${uiToken(field.key)}`} key={field.key} value={field.key}>
-                                          {field.label} [{getTypeLabel(field.type)}]
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-
-                                  <Select data-ui={`advanced-rule-op-select-${rule.id}`} value={rule.op} onValueChange={(value) => updateRuleOp(rule.id, value)}>
-                                    <SelectTrigger data-ui={`advanced-rule-op-trigger-${rule.id}`} className={`w-full ${ACTIVE_FIELD_CLASS}`}>
-                                      <SelectValue data-ui={`advanced-rule-op-value-${rule.id}`} />
-                                    </SelectTrigger>
-                                    <SelectContent data-ui={`advanced-rule-op-content-${rule.id}`}>
-                                      {ops.map((op, opIdx) => (
-                                        <SelectItem data-ui={`advanced-rule-op-option-${rule.id}-${opIdx}-${uiToken(op.value)}`} key={op.value} value={op.value}>
-                                          {op.label}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-
-                                  <Input data-ui={`advanced-rule-value1-input-${rule.id}`}
-                                    type={inputType}
-                                    step="any"
-                                    placeholder="값"
-                                    value={rule.value1}
-                                    onChange={(event) => updateRuleValue(rule.id, "value1", event.target.value)}
-                                    className={`${ACTIVE_FIELD_CLASS} ${!opNeedsValue(rule.op) ? "hidden" : ""}`}
-                                  />
-
-                                  <Input data-ui={`advanced-rule-value2-input-${rule.id}`}
-                                    type={inputType}
-                                    step="any"
-                                    placeholder="끝값"
-                                    value={rule.value2}
-                                    onChange={(event) => updateRuleValue(rule.id, "value2", event.target.value)}
-                                    className={`${ACTIVE_FIELD_CLASS} ${!opNeedsSecondValue(rule.op) ? "hidden" : ""}`}
-                                  />
-
-                                  <Button data-ui={`advanced-rule-delete-${rule.id}`} type="button" variant="outline" onClick={() => removeAdvancedRule(rule.id)}>
-                                    삭제
-                                  </Button>
-                                </div>
-                              )
-                            })
-                          )}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
-                </div>
+                </FieldGroup>
               </ScrollArea>
             </CardContent>
           </Card>
 
           <Card data-ui="card-140" className="border-slate-200/80 shadow-xl shadow-slate-900/5 xl:flex xl:h-full xl:min-h-0 xl:flex-col">
             <CardHeader data-ui="card-header-141" className={CARD_HEADER_CLASS}>
-              <div data-ui="div-142" id="status" className={FIELD_STACK_CLASS}>
-                {statusError ? (
-                  <div data-ui="div-143" className="text-sm font-medium text-red-600">{statusError}</div>
-                ) : (
-                  <>
-                    <div data-ui="div-144" className="text-sm text-muted-foreground">
-                      데이터 <strong data-ui="strong-145">{numFmt.format(viewRows.length)}</strong> / {numFmt.format(rows.length)}개
-                    </div>
-                    <div data-ui="div-146" className={CHIP_ROW_CLASS}>
-                      {statusBadges.length ? (
-                        statusBadges.map((label, idx) => (
-                          <Badge data-ui={`status-badge-${idx}-${uiToken(label)}`} key={label} variant="secondary">{label}</Badge>
-                        ))
-                      ) : (
-                        <Badge data-ui="badge-148" variant="outline">필터 없음</Badge>
-                      )}
-                    </div>
-                  </>
-                )}
+              <div data-ui="card-140-header-row" className="flex flex-wrap items-start justify-between gap-3">
+                <div data-ui="div-142" id="status" className={FIELD_STACK_CLASS}>
+                  {statusError ? (
+                    <div data-ui="div-143" className="text-sm font-medium text-red-600">{statusError}</div>
+                  ) : (
+                    <>
+                      <div data-ui="div-144" className="text-sm text-muted-foreground">
+                        데이터 <strong data-ui="strong-145">{numFmt.format(viewRows.length)}</strong> / {numFmt.format(rows.length)}개
+                      </div>
+                      <div data-ui="div-146" className={CHIP_ROW_CLASS}>
+                        {statusBadges.length ? (
+                          statusBadges.map((label, idx) => (
+                            <Badge data-ui={`status-badge-${idx}-${uiToken(label)}`} key={label} variant="secondary">{label}</Badge>
+                          ))
+                        ) : (
+                          <Badge data-ui="badge-148" variant="outline">필터 없음</Badge>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div data-ui="dialog-filter-trigger-group" className="flex flex-wrap gap-2">
+                  <Dialog data-ui="dialog-convenience-root" open={convenienceDialogOpen} onOpenChange={setConvenienceDialogOpen}>
+                    <DialogTrigger data-ui="dialog-convenience-trigger-wrap" asChild>
+                      <Button data-ui="dialog-convenience-trigger" type="button" variant="outline" className="gap-2">
+                        <SlidersHorizontal data-ui="dialog-convenience-trigger-icon" className="size-4" />
+                        편의시설 필터
+                        {selectedConveniences.length > 0 ? (
+                          <Badge data-ui="dialog-convenience-trigger-badge" variant="secondary" className="rounded-sm px-1.5 py-0 text-[11px]">
+                            {selectedConveniences.length}
+                          </Badge>
+                        ) : null}
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent data-ui="dialog-convenience-content" className="w-[min(96vw,760px)] max-w-[760px] p-0">
+                      <DialogHeader data-ui="dialog-convenience-header" className="space-y-2 border-b px-5 py-4">
+                        <DialogTitle data-ui="dialog-convenience-title">편의시설 및 서비스 필터</DialogTitle>
+                        <DialogDescription data-ui="dialog-convenience-description">
+                          옵션/편의시설 정보를 합쳐 필터합니다.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <ScrollArea data-ui="dialog-convenience-scroll-area" className="max-h-[72vh] px-5 py-4">
+                        <FieldSet data-ui="dialog-convenience-field-set" className="min-w-0 gap-3">
+                          <div data-ui="dialog-convenience-action-row" className={ACTION_ROW_CLASS}>
+                            <Field data-ui="dialog-convenience-mode-field" className={`min-w-[180px] flex-1 ${FIELD_STACK_CLASS}`}>
+                              <FieldLabel data-ui="dialog-convenience-mode-label" className="text-xs font-semibold text-muted-foreground">
+                                선택 방식
+                              </FieldLabel>
+                              <Select data-ui="dialog-convenience-mode-select" value={convenienceMode} onValueChange={(value: RuleMode) => setConvenienceMode(value)}>
+                                <SelectTrigger data-ui="dialog-convenience-mode-trigger" id="convenienceMode" className={`w-full ${ACTIVE_FIELD_CLASS}`}>
+                                  <SelectValue data-ui="dialog-convenience-mode-value" placeholder="모두 포함" />
+                                </SelectTrigger>
+                                <SelectContent data-ui="dialog-convenience-mode-content">
+                                  <SelectItem data-ui="dialog-convenience-mode-item-all" value="all">모두 포함</SelectItem>
+                                  <SelectItem data-ui="dialog-convenience-mode-item-any" value="any">하나 이상 포함</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </Field>
+
+                            <Button data-ui="dialog-convenience-clear-button" id="clearConvenienceBtn" variant="outline" type="button" onClick={clearConvenience}>
+                              선택 해제
+                            </Button>
+                          </div>
+
+                          <div data-ui="dialog-convenience-chip-row" id="convenienceChips" className={CHIP_ROW_CLASS}>
+                            {!convenienceCatalog.length ? (
+                              <div data-ui="dialog-convenience-empty" className="rounded-md border border-dashed bg-background/80 px-3 py-2 text-xs text-muted-foreground">
+                                편의시설 데이터가 없습니다.
+                              </div>
+                            ) : (
+                              convenienceCatalog.map((item, idx) => {
+                                const active = selectedConveniences.includes(item.name)
+                                return (
+                                  <Button data-ui={`convenience-chip-${idx}-${uiToken(item.name)}`}
+                                    key={item.name}
+                                    type="button"
+                                    size="sm"
+                                    variant={active ? "default" : "outline"}
+                                    onClick={() => toggleConvenience(item.name)}
+                                  >
+                                    {item.name} ({numFmt.format(item.count)})
+                                  </Button>
+                                )
+                              })
+                            )}
+                          </div>
+                        </FieldSet>
+                      </ScrollArea>
+                    </DialogContent>
+                  </Dialog>
+
+                  <Dialog data-ui="dialog-advanced-root" open={advancedDialogOpen} onOpenChange={setAdvancedDialogOpen}>
+                    <DialogTrigger data-ui="dialog-advanced-trigger-wrap" asChild>
+                      <Button data-ui="dialog-advanced-trigger" type="button" variant="outline" className="gap-2">
+                        <SlidersHorizontal data-ui="dialog-advanced-trigger-icon" className="size-4" />
+                        고급 필터
+                        {advancedRules.length > 0 ? (
+                          <Badge data-ui="dialog-advanced-trigger-badge" variant="secondary" className="rounded-sm px-1.5 py-0 text-[11px]">
+                            {advancedRules.length}
+                          </Badge>
+                        ) : null}
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent data-ui="dialog-advanced-content" className="w-[min(96vw,1080px)] max-w-[1080px] p-0">
+                      <DialogHeader data-ui="dialog-advanced-header" className="space-y-2 border-b px-5 py-4">
+                        <DialogTitle data-ui="dialog-advanced-title">고급 필터</DialogTitle>
+                        <DialogDescription data-ui="dialog-advanced-description">
+                          파생/원본 필드에 규칙 기반 조건을 추가합니다.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <ScrollArea data-ui="dialog-advanced-scroll-area" className="max-h-[72vh] px-5 py-4">
+                        <FieldSet data-ui="dialog-advanced-field-set" className="min-w-0 gap-3">
+                          <div data-ui="dialog-advanced-action-row" className={ACTION_ROW_CLASS}>
+                            <Field data-ui="dialog-advanced-mode-field" className={`min-w-[180px] flex-1 ${FIELD_STACK_CLASS}`}>
+                              <FieldLabel data-ui="dialog-advanced-mode-label" className="text-xs font-semibold text-muted-foreground">
+                                규칙 결합
+                              </FieldLabel>
+                              <Select data-ui="dialog-advanced-mode-select" value={advMode} onValueChange={(value: RuleMode) => setAdvMode(value)}>
+                                <SelectTrigger data-ui="dialog-advanced-mode-trigger" id="advMode" className={`w-full ${ACTIVE_FIELD_CLASS}`}>
+                                  <SelectValue data-ui="dialog-advanced-mode-value" placeholder="모두 일치" />
+                                </SelectTrigger>
+                                <SelectContent data-ui="dialog-advanced-mode-content">
+                                  <SelectItem data-ui="dialog-advanced-mode-item-all" value="all">모두 일치</SelectItem>
+                                  <SelectItem data-ui="dialog-advanced-mode-item-any" value="any">하나 이상 일치</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </Field>
+                            <Button data-ui="dialog-advanced-add-rule-button" id="addRuleBtn" type="button" onClick={addAdvancedRule}>규칙 추가</Button>
+                            <Button data-ui="dialog-advanced-clear-rules-button" id="clearRulesBtn" type="button" variant="outline" onClick={clearAdvancedRules}>규칙 전체 삭제</Button>
+                          </div>
+
+                          <div data-ui="dialog-advanced-rule-list" id="ruleList" className="space-y-2">
+                            {!filterFields.length ? (
+                              <div data-ui="dialog-advanced-empty-fields" className="rounded-md border border-dashed bg-background/80 px-3 py-2 text-xs text-muted-foreground">
+                                파일을 먼저 불러오면 필드 목록이 생성됩니다.
+                              </div>
+                            ) : !advancedRules.length ? (
+                              <div data-ui="dialog-advanced-empty-rules" className="rounded-md border border-dashed bg-background/80 px-3 py-2 text-xs text-muted-foreground">
+                                규칙이 없습니다. 규칙 추가 버튼으로 필터 조건을 추가하세요.
+                              </div>
+                            ) : (
+                              advancedRules.map((rule) => {
+                                const def = getFieldDef(rule.field) || filterFields[0]
+                                const ops = getOpsForType(def?.type || "text")
+                                const inputType = (def?.type || "text") === "number" ? "number" : "text"
+
+                                return (
+                                  <div data-ui={`advanced-rule-row-${rule.id}`}
+                                    key={rule.id}
+                                    className="grid gap-3 rounded-md border bg-background p-3 sm:grid-cols-[minmax(220px,1.3fr)_minmax(132px,0.8fr)_minmax(120px,1fr)_minmax(120px,1fr)_auto]"
+                                  >
+                                    <Select data-ui={`advanced-rule-field-select-${rule.id}`} value={rule.field} onValueChange={(value) => updateRuleField(rule.id, value)}>
+                                      <SelectTrigger data-ui={`advanced-rule-field-trigger-${rule.id}`} className={`w-full ${ACTIVE_FIELD_CLASS}`}>
+                                        <SelectValue data-ui={`advanced-rule-field-value-${rule.id}`} />
+                                      </SelectTrigger>
+                                      <SelectContent data-ui={`advanced-rule-field-content-${rule.id}`} className="max-h-80">
+                                        {filterFields.map((field, fieldIdx) => (
+                                          <SelectItem data-ui={`advanced-rule-field-option-${rule.id}-${fieldIdx}-${uiToken(field.key)}`} key={field.key} value={field.key}>
+                                            {field.label} [{getTypeLabel(field.type)}]
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+
+                                    <Select data-ui={`advanced-rule-op-select-${rule.id}`} value={rule.op} onValueChange={(value) => updateRuleOp(rule.id, value)}>
+                                      <SelectTrigger data-ui={`advanced-rule-op-trigger-${rule.id}`} className={`w-full ${ACTIVE_FIELD_CLASS}`}>
+                                        <SelectValue data-ui={`advanced-rule-op-value-${rule.id}`} />
+                                      </SelectTrigger>
+                                      <SelectContent data-ui={`advanced-rule-op-content-${rule.id}`}>
+                                        {ops.map((op, opIdx) => (
+                                          <SelectItem data-ui={`advanced-rule-op-option-${rule.id}-${opIdx}-${uiToken(op.value)}`} key={op.value} value={op.value}>
+                                            {op.label}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+
+                                    <Input data-ui={`advanced-rule-value1-input-${rule.id}`}
+                                      type={inputType}
+                                      step="any"
+                                      placeholder="값"
+                                      value={rule.value1}
+                                      onChange={(event) => updateRuleValue(rule.id, "value1", event.target.value)}
+                                      className={`${ACTIVE_FIELD_CLASS} ${!opNeedsValue(rule.op) ? "hidden" : ""}`}
+                                    />
+
+                                    <Input data-ui={`advanced-rule-value2-input-${rule.id}`}
+                                      type={inputType}
+                                      step="any"
+                                      placeholder="끝값"
+                                      value={rule.value2}
+                                      onChange={(event) => updateRuleValue(rule.id, "value2", event.target.value)}
+                                      className={`${ACTIVE_FIELD_CLASS} ${!opNeedsSecondValue(rule.op) ? "hidden" : ""}`}
+                                    />
+
+                                    <Button data-ui={`advanced-rule-delete-${rule.id}`} type="button" variant="outline" onClick={() => removeAdvancedRule(rule.id)}>
+                                      삭제
+                                    </Button>
+                                  </div>
+                                )
+                              })
+                            )}
+                          </div>
+                        </FieldSet>
+                      </ScrollArea>
+                    </DialogContent>
+                  </Dialog>
+                </div>
               </div>
             </CardHeader>
             <CardContent data-ui="card-content-149" className={`${CARD_CONTENT_CLASS} xl:flex-col`}>
