@@ -255,6 +255,7 @@ const MAX_DISTANCE_PRESETS: Array<{ label: string; value: number | null }> = [
 
 const DEFAULT_MIN_REVIEW = 50
 const DEFAULT_MAX_DISTANCE: number | null = null
+const ACTIVE_FIELD_CLASS = "focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary"
 const CENTER_SEARCH_ENDPOINT = "https://nominatim.openstreetmap.org/search"
 const CENTER_SEARCH_FALLBACK_ENDPOINT = "https://photon.komoot.io/api/"
 const CENTER_SEARCH_LIMIT = 8
@@ -1325,16 +1326,17 @@ function App() {
               <CardTitle data-ui="card-019-title" className="text-xl font-semibold">Place Datagrid</CardTitle>
             </CardHeader>
             <CardContent data-ui="card-content-020" className="px-4 pb-4 pt-0 md:px-5 md:pb-5 xl:flex xl:min-h-0 xl:flex-1">
-              <ScrollArea data-ui="scroll-area-021" className="h-[min(72vh,860px)] pr-3 xl:h-full">
-                <div data-ui="div-022" className="space-y-4 px-1 pb-1">
+              <ScrollArea data-ui="scroll-area-021" className="h-[min(72vh,860px)] pr-2 xl:h-full">
+                <div data-ui="div-022" className="space-y-4">
                   <div data-ui="div-023" className="space-y-2">
                     <label data-ui="label-024" className="text-xs font-semibold text-muted-foreground" htmlFor="fileInput">JSON 파일</label>
-                    <Input data-ui="input-025" id="fileInput" ref={fileInputRef} type="file" accept=".json,application/json" onChange={handleFileChange} />
+                    <Input data-ui="input-025" className={ACTIVE_FIELD_CLASS} id="fileInput" ref={fileInputRef} type="file" accept=".json,application/json" onChange={handleFileChange} />
                   </div>
 
                   <div data-ui="div-026" className="space-y-2">
                     <label data-ui="label-027" className="text-xs font-semibold text-muted-foreground" htmlFor="searchInput">통합 검색</label>
                     <Input data-ui="input-028"
+                      className={ACTIVE_FIELD_CLASS}
                       id="searchInput"
                       value={searchInput}
                       onChange={(event) => setSearchInput(event.target.value)}
@@ -1383,6 +1385,7 @@ function App() {
                     </label>
                     <form data-ui="form-040" id="centerSearchForm" className="grid gap-2 md:grid-cols-[1fr_1.2fr_auto]" onSubmit={handleCenterFormSubmit}>
                       <Input data-ui="input-041"
+                        className={ACTIVE_FIELD_CLASS}
                         id="centerSearchInput"
                         value={centerSearchInput}
                         onChange={(event) => setCenterSearchInput(event.target.value)}
@@ -1409,7 +1412,7 @@ function App() {
                             applyCenterSearchResultById(value)
                           }}
                         >
-                          <SelectTrigger data-ui="select-trigger-044" id="centerSearchSelectTrigger" className="w-full">
+                          <SelectTrigger data-ui="select-trigger-044" id="centerSearchSelectTrigger" className={`w-full ${ACTIVE_FIELD_CLASS}`}>
                             <SelectValue data-ui="select-value-045"
                               id="centerSearchSelectValue"
                               placeholder={centerSelectPlaceholder}
@@ -1446,11 +1449,11 @@ function App() {
                   <div data-ui="div-052" className="grid gap-2 sm:grid-cols-2">
                     <div data-ui="div-053" className="space-y-2">
                       <label data-ui="label-054" className="text-xs font-semibold text-muted-foreground" htmlFor="refDate">기준 날짜</label>
-                      <Input data-ui="input-055" id="refDate" type="date" value={refDate} onChange={(event) => setRefDate(event.target.value)} />
+                      <Input data-ui="input-055" className={ACTIVE_FIELD_CLASS} id="refDate" type="date" value={refDate} onChange={(event) => setRefDate(event.target.value)} />
                     </div>
                     <div data-ui="div-056" className="space-y-2">
                       <label data-ui="label-057" className="text-xs font-semibold text-muted-foreground" htmlFor="refTime">기준 시간</label>
-                      <Input data-ui="input-058" id="refTime" type="time" step={60} value={refTime} onChange={(event) => setRefTime(event.target.value)} />
+                      <Input data-ui="input-058" className={ACTIVE_FIELD_CLASS} id="refTime" type="time" step={60} value={refTime} onChange={(event) => setRefTime(event.target.value)} />
                     </div>
                   </div>
 
@@ -1458,7 +1461,7 @@ function App() {
                     <div data-ui="div-060" className="space-y-2">
                       <label data-ui="label-061" className="text-xs font-semibold text-muted-foreground">기준시각 영업 상태</label>
                       <Select data-ui="select-062" value={refOpenMode} onValueChange={setRefOpenMode}>
-                        <SelectTrigger data-ui="select-trigger-063" id="refOpenMode" className="w-full">
+                        <SelectTrigger data-ui="select-trigger-063" id="refOpenMode" className={`w-full ${ACTIVE_FIELD_CLASS}`}>
                           <SelectValue data-ui="select-value-064" placeholder="전체" />
                         </SelectTrigger>
                         <SelectContent data-ui="select-content-065">
@@ -1474,7 +1477,7 @@ function App() {
                     <div data-ui="div-071" className="space-y-2">
                       <label data-ui="label-072" className="text-xs font-semibold text-muted-foreground">최상위 키워드</label>
                       <Select data-ui="select-073" value={topKeywordFilter} onValueChange={setTopKeywordFilter}>
-                        <SelectTrigger data-ui="select-trigger-074" id="topKeywordFilter" className="w-full">
+                        <SelectTrigger data-ui="select-trigger-074" id="topKeywordFilter" className={`w-full ${ACTIVE_FIELD_CLASS}`}>
                           <SelectValue data-ui="select-value-075" placeholder="전체" />
                         </SelectTrigger>
                         <SelectContent data-ui="select-content-076">
@@ -1533,7 +1536,7 @@ function App() {
                           <div data-ui="div-094" className="min-w-[180px] flex-1 space-y-2">
                             <label data-ui="label-095" className="text-xs font-semibold text-muted-foreground">선택 방식</label>
                             <Select data-ui="select-096" value={convenienceMode} onValueChange={(value: RuleMode) => setConvenienceMode(value)}>
-                              <SelectTrigger data-ui="select-trigger-097" id="convenienceMode" className="w-full">
+                              <SelectTrigger data-ui="select-trigger-097" id="convenienceMode" className={`w-full ${ACTIVE_FIELD_CLASS}`}>
                                 <SelectValue data-ui="select-value-098" placeholder="모두 포함" />
                               </SelectTrigger>
                               <SelectContent data-ui="select-content-099">
@@ -1583,7 +1586,7 @@ function App() {
                           <div data-ui="div-113" className="min-w-[180px] flex-1 space-y-2">
                             <label data-ui="label-114" className="text-xs font-semibold text-muted-foreground">규칙 결합</label>
                             <Select data-ui="select-115" value={advMode} onValueChange={(value: RuleMode) => setAdvMode(value)}>
-                              <SelectTrigger data-ui="select-trigger-116" id="advMode" className="w-full">
+                              <SelectTrigger data-ui="select-trigger-116" id="advMode" className={`w-full ${ACTIVE_FIELD_CLASS}`}>
                                 <SelectValue data-ui="select-value-117" placeholder="모두 일치" />
                               </SelectTrigger>
                               <SelectContent data-ui="select-content-118">
@@ -1617,7 +1620,7 @@ function App() {
                                   className="grid gap-2 rounded-md border bg-background p-2 sm:grid-cols-[minmax(220px,1.3fr)_minmax(132px,0.8fr)_minmax(120px,1fr)_minmax(120px,1fr)_auto]"
                                 >
                                   <Select data-ui={`advanced-rule-field-select-${rule.id}`} value={rule.field} onValueChange={(value) => updateRuleField(rule.id, value)}>
-                                    <SelectTrigger data-ui={`advanced-rule-field-trigger-${rule.id}`} className="w-full">
+                                    <SelectTrigger data-ui={`advanced-rule-field-trigger-${rule.id}`} className={`w-full ${ACTIVE_FIELD_CLASS}`}>
                                       <SelectValue data-ui={`advanced-rule-field-value-${rule.id}`} />
                                     </SelectTrigger>
                                     <SelectContent data-ui={`advanced-rule-field-content-${rule.id}`} className="max-h-80">
@@ -1630,7 +1633,7 @@ function App() {
                                   </Select>
 
                                   <Select data-ui={`advanced-rule-op-select-${rule.id}`} value={rule.op} onValueChange={(value) => updateRuleOp(rule.id, value)}>
-                                    <SelectTrigger data-ui={`advanced-rule-op-trigger-${rule.id}`} className="w-full">
+                                    <SelectTrigger data-ui={`advanced-rule-op-trigger-${rule.id}`} className={`w-full ${ACTIVE_FIELD_CLASS}`}>
                                       <SelectValue data-ui={`advanced-rule-op-value-${rule.id}`} />
                                     </SelectTrigger>
                                     <SelectContent data-ui={`advanced-rule-op-content-${rule.id}`}>
@@ -1648,7 +1651,7 @@ function App() {
                                     placeholder="값"
                                     value={rule.value1}
                                     onChange={(event) => updateRuleValue(rule.id, "value1", event.target.value)}
-                                    className={!opNeedsValue(rule.op) ? "hidden" : ""}
+                                    className={`${ACTIVE_FIELD_CLASS} ${!opNeedsValue(rule.op) ? "hidden" : ""}`}
                                   />
 
                                   <Input data-ui={`advanced-rule-value2-input-${rule.id}`}
@@ -1657,7 +1660,7 @@ function App() {
                                     placeholder="끝값"
                                     value={rule.value2}
                                     onChange={(event) => updateRuleValue(rule.id, "value2", event.target.value)}
-                                    className={!opNeedsSecondValue(rule.op) ? "hidden" : ""}
+                                    className={`${ACTIVE_FIELD_CLASS} ${!opNeedsSecondValue(rule.op) ? "hidden" : ""}`}
                                   />
 
                                   <Button data-ui={`advanced-rule-delete-${rule.id}`} type="button" variant="outline" onClick={() => removeAdvancedRule(rule.id)}>
