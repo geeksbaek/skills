@@ -358,79 +358,135 @@
       width: 100%;
     }
 
-    .center-search-row {
-      display: flex;
+    .center-search-form {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) auto;
       gap: 0.5rem;
       align-items: center;
       width: 100%;
       min-width: 0;
     }
 
-    .center-search-row input {
-      flex: 1 1 auto;
+    .center-search-form input {
       min-width: 0;
     }
 
-    .controls .control .center-search-row .btn {
-      flex: 0 0 auto;
-      width: auto;
+    .center-search-form .btn {
       min-width: 5rem;
+      width: auto;
     }
 
-    .center-options {
+    .select-root {
       margin-top: 0.42rem;
-      padding: 0.44rem;
-      border-radius: calc(var(--radius) - 0.1rem);
+      position: relative;
+    }
+
+    .center-search-select {
+      margin-top: 0;
+    }
+
+    .select-trigger {
+      width: 100%;
+      min-height: 2.6rem;
+      border-radius: calc(var(--radius) - 0.2rem);
+      border: 1px solid hsl(var(--input));
+      background: hsl(var(--background));
+      color: hsl(var(--foreground));
+      padding: 0 0.74rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.65rem;
+      cursor: pointer;
+      font: 500 0.84rem/1.25 "Pretendard Variable", "Pretendard", sans-serif;
+      text-align: left;
+      transition: border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+    }
+
+    .select-trigger:hover {
+      background: hsl(var(--accent) / 0.45);
+    }
+
+    .select-trigger:focus-visible {
+      outline: none;
+      border-color: hsl(var(--ring));
+      box-shadow: 0 0 0 3px hsl(var(--ring) / 0.2);
+    }
+
+    .select-trigger[data-placeholder="true"] {
+      color: hsl(var(--muted-foreground));
+    }
+
+    .select-chevron {
+      flex: 0 0 auto;
+      color: hsl(var(--muted-foreground));
+      font-size: 0.74rem;
+      transform: translateY(1px);
+      transition: transform 140ms ease;
+    }
+
+    .select-trigger[aria-expanded="true"] .select-chevron {
+      transform: rotate(180deg) translateY(-1px);
+    }
+
+    .select-content {
+      position: absolute;
+      z-index: 25;
+      top: calc(100% + 0.34rem);
+      left: 0;
+      width: 100%;
+      border-radius: calc(var(--radius) - 0.05rem);
       border: 1px solid hsl(var(--border));
       background: hsl(var(--popover));
+      box-shadow: 0 18px 38px -24px rgb(15 23 42 / 0.55);
+      padding: 0.34rem;
       display: grid;
-      gap: 0.36rem;
-      max-height: 230px;
+      gap: 0.18rem;
+      max-height: 246px;
       overflow: auto;
-      box-shadow: 0 20px 45px -40px rgb(15 23 42 / 0.65);
     }
 
-    .center-options[hidden] {
+    .select-content[hidden] {
       display: none;
     }
 
-    .center-option {
-      border: 1px solid transparent;
-      border-radius: calc(var(--radius) - 0.25rem);
-      background: hsl(var(--background));
+    .select-item {
+      border: 0;
+      background: transparent;
       color: hsl(var(--popover-foreground));
+      border-radius: calc(var(--radius) - 0.28rem);
       text-align: left;
+      padding: 0.48rem 0.54rem;
       display: flex;
       align-items: flex-start;
-      gap: 0.52rem;
-      padding: 0.52rem 0.58rem;
+      gap: 0.48rem;
       cursor: pointer;
-      font: 500 0.78rem/1.35 "Pretendard Variable", "Pretendard", sans-serif;
-      transition: border-color 120ms ease, background-color 120ms ease;
+      font: 500 0.78rem/1.34 "Pretendard Variable", "Pretendard", sans-serif;
+      transition: background-color 120ms ease, color 120ms ease;
     }
 
-    .center-option:hover {
-      border-color: hsl(var(--border));
+    .select-item:hover {
       background: hsl(var(--accent));
     }
 
-    .center-option.active {
-      border-color: hsl(var(--ring) / 0.55);
+    .select-item[data-selected="true"] {
       background: hsl(var(--accent));
-      box-shadow: inset 0 0 0 1px hsl(var(--ring) / 0.22);
+      color: hsl(var(--foreground));
+      box-shadow: inset 0 0 0 1px hsl(var(--ring) / 0.25);
     }
 
-    .center-option-index {
+    .select-item-index {
       flex: 0 0 auto;
       font-family: "IBM Plex Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
       font-size: 0.72rem;
       color: hsl(var(--muted-foreground));
       padding-top: 0.03rem;
+      min-width: 1.2rem;
     }
 
-    .center-option-label {
+    .select-item-label {
       min-width: 0;
-      line-height: 1.4;
+      line-height: 1.35;
       word-break: keep-all;
       overflow-wrap: anywhere;
     }
@@ -510,6 +566,18 @@
       line-height: 1;
     }
 
+    .separator {
+      height: 1px;
+      width: 100%;
+      background: hsl(var(--border));
+      margin: 0.1rem 0 0.35rem;
+    }
+
+    .accordion {
+      display: grid;
+      gap: 0.62rem;
+    }
+
     .advanced-wrap {
       border: 1px solid hsl(var(--border));
       border-radius: calc(var(--radius) + 0.05rem);
@@ -519,12 +587,57 @@
       gap: 0.62rem;
     }
 
-    .advanced-head {
+    .accordion-item {
+      overflow: hidden;
+    }
+
+    .accordion-trigger {
+      border: 0;
+      background: transparent;
+      width: 100%;
+      margin: -0.14rem -0.12rem 0;
+      padding: 0.12rem;
       display: flex;
-      align-items: flex-end;
+      align-items: center;
       justify-content: space-between;
-      flex-wrap: wrap;
+      gap: 0.6rem;
+      cursor: pointer;
+      color: hsl(var(--foreground));
+      text-align: left;
+      border-radius: calc(var(--radius) - 0.24rem);
+      transition: background-color 120ms ease;
+    }
+
+    .accordion-trigger:hover {
+      background: hsl(var(--accent) / 0.45);
+    }
+
+    .accordion-trigger-label {
+      min-width: 0;
+      display: grid;
+      gap: 0.12rem;
+    }
+
+    .accordion-chevron {
+      flex: 0 0 auto;
+      color: hsl(var(--muted-foreground));
+      font-size: 0.76rem;
+      transition: transform 140ms ease;
+      transform: rotate(-90deg);
+    }
+
+    .accordion-trigger[aria-expanded="true"] .accordion-chevron {
+      transform: rotate(0);
+    }
+
+    .accordion-content {
+      display: grid;
       gap: 0.62rem;
+      padding-top: 0.5rem;
+    }
+
+    .accordion-content[data-open="false"] {
+      display: none;
     }
 
     .advanced-title {
@@ -613,6 +726,35 @@
       margin: 0;
       font-size: 0.8rem;
       line-height: 1.4;
+      color: hsl(var(--muted-foreground));
+      display: grid;
+      gap: 0.38rem;
+    }
+
+    .status-main {
+      color: hsl(var(--muted-foreground));
+      font-size: 0.8rem;
+      line-height: 1.4;
+    }
+
+    .status-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.32rem;
+    }
+
+    .status-badge {
+      border-radius: 999px;
+      border: 1px solid hsl(var(--border));
+      background: hsl(var(--secondary));
+      color: hsl(var(--secondary-foreground));
+      padding: 0.18rem 0.52rem;
+      font-size: 0.69rem;
+      line-height: 1.2;
+      font-weight: 560;
+    }
+
+    .status-badge.muted {
       color: hsl(var(--muted-foreground));
     }
 
@@ -819,16 +961,15 @@
         grid-column: auto;
       }
 
-      .center-search-row {
-        flex-direction: column;
-        align-items: stretch;
+      .center-search-form {
+        grid-template-columns: 1fr;
       }
 
-      .controls .control .center-search-row .btn {
+      .center-search-form .btn {
         width: 100%;
       }
 
-      .advanced-head {
+      .accordion-trigger {
         align-items: flex-start;
       }
 
@@ -894,11 +1035,24 @@
             </div>
             <div class="control">
               <label for="centerSearchInput">거리 기준 주소/건물명</label>
-              <div class="center-search-row">
+              <form id="centerSearchForm" class="center-search-form">
                 <input id="centerSearchInput" type="text" autocomplete="off" placeholder="예: 상현역, 광교호수공원, 앨리웨이광교" />
-                <button id="searchCenterBtn" class="btn alt slim" type="button">검색</button>
-              </div>
-              <div id="centerSearchOptions" class="center-options" role="listbox" aria-label="거리 기준점 옵션" hidden></div>
+                <div id="centerSearchSelectRoot" class="select-root center-search-select">
+                  <button
+                    id="centerSearchSelectTrigger"
+                    type="button"
+                    class="select-trigger"
+                    aria-haspopup="listbox"
+                    aria-expanded="false"
+                    data-placeholder="true"
+                  >
+                    <span id="centerSearchSelectValue">검색 결과 옵션을 선택하세요</span>
+                    <span class="select-chevron" aria-hidden="true">▾</span>
+                  </button>
+                  <div id="centerSearchOptions" class="select-content" role="listbox" aria-label="거리 기준점 옵션" hidden></div>
+                </div>
+                <button id="searchCenterBtn" class="btn alt slim" type="submit">검색</button>
+              </form>
               <div id="centerSearchStatus" class="center-search-status">주소/건물명을 검색하고 옵션에서 선택하면 거리를 계산합니다.</div>
             </div>
             <div class="control">
@@ -933,47 +1087,56 @@
             </div>
           </div>
 
+          <div class="separator" aria-hidden="true"></div>
           <div id="sortChips" class="chips"></div>
 
-          <div class="advanced-wrap">
-            <div class="advanced-head">
-              <div>
-                <div class="advanced-title">편의시설 및 서비스 필터</div>
-                <div class="advanced-desc">옵션/편의시설 정보를 합쳐 필터합니다.</div>
-              </div>
-              <div class="advanced-actions">
-                <div class="control" style="min-width: 160px;">
-                  <label for="convenienceMode">선택 방식</label>
-                  <select id="convenienceMode">
-                    <option value="all">모두 포함</option>
-                    <option value="any">하나 이상 포함</option>
-                  </select>
+          <div class="accordion">
+            <section class="advanced-wrap accordion-item">
+              <button id="convenienceAccordionTrigger" class="accordion-trigger" type="button" aria-expanded="true">
+                <span class="accordion-trigger-label">
+                  <span class="advanced-title">편의시설 및 서비스 필터</span>
+                  <span class="advanced-desc">옵션/편의시설 정보를 합쳐 필터합니다.</span>
+                </span>
+                <span class="accordion-chevron" aria-hidden="true">▾</span>
+              </button>
+              <div id="convenienceAccordionContent" class="accordion-content" data-open="true">
+                <div class="advanced-actions">
+                  <div class="control" style="min-width: 160px;">
+                    <label for="convenienceMode">선택 방식</label>
+                    <select id="convenienceMode">
+                      <option value="all">모두 포함</option>
+                      <option value="any">하나 이상 포함</option>
+                    </select>
+                  </div>
+                  <button id="clearConvenienceBtn" class="btn alt slim" type="button">선택 해제</button>
                 </div>
-                <button id="clearConvenienceBtn" class="btn alt slim" type="button">선택 해제</button>
+                <div id="convenienceChips" class="chips"></div>
               </div>
-            </div>
-            <div id="convenienceChips" class="chips"></div>
-          </div>
+            </section>
 
-          <div class="advanced-wrap">
-            <div class="advanced-head">
-              <div>
-                <div class="advanced-title">고급 필터</div>
-                <div class="advanced-desc">파생 필드 + 원본(raw.*) 필드 전체에 대해 규칙 기반 필터를 추가할 수 있습니다.</div>
-              </div>
-              <div class="advanced-actions">
-                <div class="control" style="min-width: 160px;">
-                  <label for="advMode">규칙 결합</label>
-                  <select id="advMode">
-                    <option value="all">모두 일치</option>
-                    <option value="any">하나 이상 일치</option>
-                  </select>
+            <section class="advanced-wrap accordion-item">
+              <button id="advancedAccordionTrigger" class="accordion-trigger" type="button" aria-expanded="true">
+                <span class="accordion-trigger-label">
+                  <span class="advanced-title">고급 필터</span>
+                  <span class="advanced-desc">파생 필드 + 원본(raw.*) 필드 전체에 대해 규칙 기반 필터를 추가할 수 있습니다.</span>
+                </span>
+                <span class="accordion-chevron" aria-hidden="true">▾</span>
+              </button>
+              <div id="advancedAccordionContent" class="accordion-content" data-open="true">
+                <div class="advanced-actions">
+                  <div class="control" style="min-width: 160px;">
+                    <label for="advMode">규칙 결합</label>
+                    <select id="advMode">
+                      <option value="all">모두 일치</option>
+                      <option value="any">하나 이상 일치</option>
+                    </select>
+                  </div>
+                  <button id="addRuleBtn" class="btn slim" type="button">규칙 추가</button>
+                  <button id="clearRulesBtn" class="btn alt slim" type="button">규칙 전체 삭제</button>
                 </div>
-                <button id="addRuleBtn" class="btn slim" type="button">규칙 추가</button>
-                <button id="clearRulesBtn" class="btn alt slim" type="button">규칙 전체 삭제</button>
+                <div id="ruleList" class="rule-list"></div>
               </div>
-            </div>
-            <div id="ruleList" class="rule-list"></div>
+            </section>
           </div>
         </section>
       </aside>
@@ -1153,7 +1316,9 @@
       distanceCenterSource: "unset",
       selectedCenterSearchResultId: null,
       centerSearchResults: [],
-      centerSearchOptionsOpen: false,
+      centerSearchSelectOpen: false,
+      convenienceAccordionOpen: true,
+      advancedAccordionOpen: true,
       centerSearchSeq: 0,
       centerSearchLoading: false,
       minReviewPreset: DEFAULT_MIN_REVIEW,
@@ -1169,8 +1334,16 @@
       searchInput: document.getElementById("searchInput"),
       minReviewsChips: document.getElementById("minReviewsChips"),
       maxDistanceChips: document.getElementById("maxDistanceChips"),
+      centerSearchForm: document.getElementById("centerSearchForm"),
       centerSearchInput: document.getElementById("centerSearchInput"),
+      centerSearchSelectRoot: document.getElementById("centerSearchSelectRoot"),
+      centerSearchSelectTrigger: document.getElementById("centerSearchSelectTrigger"),
+      centerSearchSelectValue: document.getElementById("centerSearchSelectValue"),
       centerSearchOptions: document.getElementById("centerSearchOptions"),
+      convenienceAccordionTrigger: document.getElementById("convenienceAccordionTrigger"),
+      convenienceAccordionContent: document.getElementById("convenienceAccordionContent"),
+      advancedAccordionTrigger: document.getElementById("advancedAccordionTrigger"),
+      advancedAccordionContent: document.getElementById("advancedAccordionContent"),
       searchCenterBtn: document.getElementById("searchCenterBtn"),
       centerSearchStatus: document.getElementById("centerSearchStatus"),
       refDate: document.getElementById("refDate"),
@@ -1262,6 +1435,14 @@
       });
     }
 
+    function renderAccordions() {
+      ui.convenienceAccordionTrigger.setAttribute("aria-expanded", state.convenienceAccordionOpen ? "true" : "false");
+      ui.convenienceAccordionContent.dataset.open = state.convenienceAccordionOpen ? "true" : "false";
+
+      ui.advancedAccordionTrigger.setAttribute("aria-expanded", state.advancedAccordionOpen ? "true" : "false");
+      ui.advancedAccordionContent.dataset.open = state.advancedAccordionOpen ? "true" : "false";
+    }
+
     function parseDistanceMeters(distance) {
       if (!distance) return null;
       if (typeof distance === "number") return Math.round(distance);
@@ -1327,7 +1508,7 @@
       state.distanceCenter = null;
       state.distanceCenterSource = "unset";
       state.selectedCenterSearchResultId = null;
-      state.centerSearchOptionsOpen = false;
+      state.centerSearchSelectOpen = false;
     }
 
     function getDistanceCenter() {
@@ -1370,8 +1551,37 @@
       return `${index + 1}. ${item.label}`;
     }
 
+    function renderCenterSearchSelectValue() {
+      const selectedId = state.selectedCenterSearchResultId;
+      const selectedIndex = state.centerSearchResults.findIndex((item) => item.id === selectedId);
+      if (selectedIndex >= 0) {
+        ui.centerSearchSelectValue.textContent = toCenterSearchOptionText(
+          state.centerSearchResults[selectedIndex],
+          selectedIndex
+        );
+        ui.centerSearchSelectTrigger.dataset.placeholder = "false";
+        return;
+      }
+
+      if (!state.centerSearchResults.length) {
+        ui.centerSearchSelectValue.textContent = "검색 결과 옵션을 선택하세요";
+      } else {
+        ui.centerSearchSelectValue.textContent = "검색 결과에서 기준점을 선택하세요";
+      }
+      ui.centerSearchSelectTrigger.dataset.placeholder = "true";
+    }
+
+    function setCenterSearchSelectOpen(nextOpen) {
+      const canOpen = state.centerSearchResults.length > 0;
+      state.centerSearchSelectOpen = Boolean(nextOpen) && canOpen;
+      ui.centerSearchSelectTrigger.setAttribute("aria-expanded", state.centerSearchSelectOpen ? "true" : "false");
+      renderCenterSearchResults();
+    }
+
     function renderCenterSearchResults() {
-      const shouldShow = state.centerSearchOptionsOpen && state.centerSearchResults.length > 0;
+      const shouldShow = state.centerSearchSelectOpen && state.centerSearchResults.length > 0;
+      ui.centerSearchSelectTrigger.setAttribute("aria-expanded", shouldShow ? "true" : "false");
+      renderCenterSearchSelectValue();
       if (!shouldShow) {
         ui.centerSearchOptions.hidden = true;
         render(nothing, ui.centerSearchOptions);
@@ -1381,21 +1591,21 @@
       ui.centerSearchOptions.hidden = false;
       render(
         html`${state.centerSearchResults.map((item, index) => {
-          const optionText = toCenterSearchOptionText(item, index);
           const isActive = state.selectedCenterSearchResultId === item.id;
           return html`
             <button
               type="button"
               role="option"
               aria-selected=${isActive ? "true" : "false"}
-              class=${isActive ? "center-option active" : "center-option"}
+              class="select-item"
+              data-selected=${isActive ? "true" : "false"}
               @click=${() => {
-                ui.centerSearchInput.value = optionText;
+                ui.centerSearchInput.value = toCenterSearchOptionText(item, index);
                 applyCenterSearchResultById(item.id);
               }}
             >
-              <span class="center-option-index">${index + 1}</span>
-              <span class="center-option-label">${item.label}</span>
+              <span class="select-item-index">${index + 1}</span>
+              <span class="select-item-label">${item.label}</span>
             </button>
           `;
         })}`,
@@ -1446,8 +1656,7 @@
 
       setDistanceCenter({ x: selected.x, y: selected.y });
       state.selectedCenterSearchResultId = resultId;
-      state.centerSearchOptionsOpen = false;
-      renderCenterSearchResults();
+      setCenterSearchSelectOpen(false);
       if (!silentStatus) {
         setCenterSearchStatus(`기준점 적용: ${selected.label}`, "ok");
       }
@@ -1536,8 +1745,7 @@
 
       const searchSeq = state.centerSearchSeq + 1;
       state.centerSearchSeq = searchSeq;
-      state.centerSearchOptionsOpen = false;
-      renderCenterSearchResults();
+      setCenterSearchSelectOpen(false);
       setCenterSearchLoading(true);
       setCenterSearchStatus(`주소 검색 중: ${query}`, "muted");
 
@@ -1571,9 +1779,8 @@
           .map((item, index) => normalizeCenterSearchResult(item, index))
           .filter(Boolean);
         state.selectedCenterSearchResultId = null;
-        state.centerSearchOptionsOpen = state.centerSearchResults.length > 0;
-
         renderCenterSearchResults();
+        setCenterSearchSelectOpen(false);
 
         if (!state.centerSearchResults.length) {
           const suffix = lastErrorMessage ? ` (${lastErrorMessage})` : "";
@@ -1582,7 +1789,7 @@
         }
 
         setCenterSearchStatus(
-          `${state.centerSearchResults.length}건 검색됨 (${providerLabel}) · 아래 옵션에서 장소를 선택하세요.`,
+          `${state.centerSearchResults.length}건 검색됨 (${providerLabel}) · Select를 열어 기준점을 선택하세요.`,
           "ok"
         );
       } catch (error) {
@@ -2392,8 +2599,27 @@
     function renderStatus() {
       const total = state.rows.length;
       const shown = state.viewRows.length;
-      ui.status.style.color = "var(--muted)";
-      ui.status.innerHTML = `데이터 <strong>${numFmt.format(shown)}</strong> / ${numFmt.format(total)}개`;
+      ui.status.style.color = "";
+      const badges = [];
+      const keywordCount = parseSearchKeywords(ui.searchInput.value).length;
+      if (keywordCount > 0) badges.push(`검색 ${keywordCount}`);
+      if (state.minReviewPreset > 0) badges.push(`최소 리뷰 ${numFmt.format(state.minReviewPreset)}+`);
+      if (state.maxDistancePreset != null) badges.push(`최대 거리 ${numFmt.format(state.maxDistancePreset)}m`);
+      if (state.selectedConveniences.length > 0) badges.push(`편의시설 ${state.selectedConveniences.length}`);
+      if (state.advancedRules.length > 0) badges.push(`고급규칙 ${state.advancedRules.length}`);
+      if (state.sort.length > 0) badges.push(`정렬 ${state.sort.length}`);
+
+      render(
+        html`
+          <div class="status-main">데이터 <strong>${numFmt.format(shown)}</strong> / ${numFmt.format(total)}개</div>
+          <div class="status-badges">
+            ${badges.length
+              ? badges.map((label) => html`<span class="status-badge">${label}</span>`)
+              : html`<span class="status-badge muted">필터 없음</span>`}
+          </div>
+        `,
+        ui.status
+      );
     }
 
     function updateSort(key, isMulti) {
@@ -2427,7 +2653,7 @@
         payload = JSON.parse(text);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        ui.status.style.color = "var(--warn)";
+        ui.status.style.color = "hsl(var(--warn))";
         ui.status.textContent = `JSON 파싱 실패: ${message}`;
         return;
       }
@@ -2455,7 +2681,7 @@
         applyView();
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        ui.status.style.color = "var(--warn)";
+        ui.status.style.color = "hsl(var(--warn))";
         ui.status.textContent = `데이터 변환 실패: ${message}`;
       }
     }
@@ -2470,12 +2696,10 @@
       });
 
       ui.searchInput.addEventListener("input", applyView);
-      ui.centerSearchInput.addEventListener("keydown", (event) => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-          if (!applyCenterSearchResultFromInput()) {
-            searchDistanceCenter();
-          }
+      ui.centerSearchForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        if (!applyCenterSearchResultFromInput()) {
+          searchDistanceCenter();
         }
       });
       ui.centerSearchInput.addEventListener("change", () => {
@@ -2484,7 +2708,21 @@
       ui.centerSearchInput.addEventListener("blur", () => {
         applyCenterSearchResultFromInput({ silentStatus: true });
       });
-      ui.searchCenterBtn.addEventListener("click", searchDistanceCenter);
+      ui.centerSearchSelectTrigger.addEventListener("click", () => {
+        if (!state.centerSearchResults.length) {
+          setCenterSearchStatus("검색 결과가 없습니다. 먼저 주소/건물명을 검색하세요.", "warn");
+          return;
+        }
+        setCenterSearchSelectOpen(!state.centerSearchSelectOpen);
+      });
+      ui.convenienceAccordionTrigger.addEventListener("click", () => {
+        state.convenienceAccordionOpen = !state.convenienceAccordionOpen;
+        renderAccordions();
+      });
+      ui.advancedAccordionTrigger.addEventListener("click", () => {
+        state.advancedAccordionOpen = !state.advancedAccordionOpen;
+        renderAccordions();
+      });
       ui.refDate.addEventListener("input", applyView);
       ui.refTime.addEventListener("input", applyView);
       ui.refOpenMode.addEventListener("change", applyView);
@@ -2517,9 +2755,12 @@
         ui.topKeywordFilter.value = "all";
         ui.convenienceMode.value = "all";
         ui.advMode.value = "all";
+        state.convenienceAccordionOpen = true;
+        state.advancedAccordionOpen = true;
         state.sort = [];
         state.selectedConveniences = [];
         state.advancedRules = [];
+        renderAccordions();
         renderHead();
         renderConvenienceChips();
         renderRuleList();
@@ -2535,6 +2776,18 @@
         reader.onload = () => loadJsonText(String(reader.result || ""));
         reader.readAsText(file, "utf-8");
       });
+      document.addEventListener("click", (event) => {
+        const target = event.target;
+        if (!(target instanceof Node)) return;
+        if (!ui.centerSearchSelectRoot.contains(target)) {
+          setCenterSearchSelectOpen(false);
+        }
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && state.centerSearchSelectOpen) {
+          setCenterSearchSelectOpen(false);
+        }
+      });
     }
 
     function init() {
@@ -2546,7 +2799,10 @@
       ui.refOpenMode.value = "all";
       ui.topKeywordFilter.value = "all";
       ui.convenienceMode.value = "all";
+      state.convenienceAccordionOpen = true;
+      state.advancedAccordionOpen = true;
       renderPresetFilters();
+      renderAccordions();
       clearDistanceCenter();
       setCenterSearchLoading(false);
       renderCenterSearchResults();
