@@ -1326,7 +1326,7 @@ function App() {
               <CardTitle data-ui="card-019-title" className="text-xl font-semibold">Place Datagrid</CardTitle>
             </CardHeader>
             <CardContent data-ui="card-content-020" className="px-4 py-0 md:px-5 xl:flex xl:min-h-0 xl:flex-1">
-              <ScrollArea data-ui="scroll-area-021" className="h-[min(72vh,860px)] pr-2 xl:h-full">
+              <ScrollArea data-ui="scroll-area-021" className="h-[min(72vh,860px)] px-2 xl:h-full">
                 <div data-ui="div-022" className="space-y-4">
                   <div data-ui="div-023" className="space-y-2">
                     <label data-ui="label-024" className="text-xs font-semibold text-muted-foreground" htmlFor="fileInput">JSON 파일</label>
