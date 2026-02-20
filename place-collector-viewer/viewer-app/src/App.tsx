@@ -988,7 +988,7 @@ function App() {
     setCenterSearchSelectOpen(false)
   }, [])
 
-  const applyCenterSearchResultById = useCallback((resultId: string, options?: { silentStatus?: boolean }): boolean => {
+  const applyCenterSearchResultById = useCallback((resultId: string): boolean => {
     const selected = centerSearchResults.find((item) => item.id === resultId)
     if (!selected) return false
 
@@ -997,9 +997,6 @@ function App() {
     setCenterSearchSelectOpen(false)
     setCenterSearchInput(selected.label)
 
-    if (!options?.silentStatus) {
-      setCenterSearchStatus({ message: `기준점 적용: ${selected.label}`, tone: "ok" })
-    }
     return true
   }, [centerSearchResults])
 
