@@ -5,6 +5,14 @@ import {
   Search,
   X,
 } from "lucide-react"
+import {
+  type ColumnDef as TanstackColumnDef,
+  flexRender,
+  getCoreRowModel,
+  getSortedRowModel,
+  type SortingState,
+  useReactTable,
+} from "@tanstack/react-table"
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Badge } from "@/components/ui/badge"
@@ -17,7 +25,6 @@ import { Separator } from "@/components/ui/separator"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 type ColumnType = "text" | "number" | "boolean"
-type SortDirection = "asc" | "desc"
 type RawRecord = Record<string, unknown>
 type RuleMode = "all" | "any"
 type CenterStatusTone = "muted" | "ok" | "warn"
@@ -28,11 +35,6 @@ interface ColumnDef {
   key: keyof PlaceRow | "openAtRefRank"
   label: string
   type: ColumnType
-}
-
-interface SortRule {
-  key: ColumnDef["key"]
-  dir: SortDirection
 }
 
 interface FieldDef {
@@ -572,31 +574,6 @@ function buildTopKeywordCatalog(rows: PlaceRow[]): Array<{ keyword: string; coun
     .map(([keyword, count]) => ({ keyword, count }))
 }
 
-function compare(left: unknown, right: unknown, type: ColumnType): number {
-  if (left === null || left === undefined) return right === null || right === undefined ? 0 : 1
-  if (right === null || right === undefined) return -1
-  if (type === "number") return Number(left) - Number(right)
-  if (type === "boolean") return Number(left) - Number(right)
-  return String(left).localeCompare(String(right), "ko")
-}
-
-function sortRows(rows: PlaceRow[], sortRules: SortRule[]): PlaceRow[] {
-  const sorted = rows.slice()
-  if (!sortRules.length) {
-    return sorted.sort((a, b) => a._index - b._index)
-  }
-
-  return sorted.sort((a, b) => {
-    for (const rule of sortRules) {
-      const col = columns.find((item) => item.key === rule.key)
-      if (!col) continue
-      const result = compare(a[col.key], b[col.key], col.type)
-      if (result !== 0) return rule.dir === "asc" ? result : -result
-    }
-    return a._index - b._index
-  })
-}
-
 function inferTypeFromRows(rows: PlaceRow[], fieldKey: string): ColumnType {
   const isRaw = fieldKey.startsWith("raw.")
   if (fieldKey === "raw.id") return "text"
@@ -865,7 +842,7 @@ function App() {
   const now = useMemo(() => new Date(), [])
 
   const [rows, setRows] = useState<PlaceRow[]>([])
-  const [sort, setSort] = useState<SortRule[]>([])
+  const [sorting, setSorting] = useState<SortingState>([])
 
   const [searchInput, setSearchInput] = useState("")
   const [minReviewPreset, setMinReviewPreset] = useState(DEFAULT_MIN_REVIEW)
@@ -979,7 +956,7 @@ function App() {
     })
   }, [rowsWithComputed, minReviewPreset, maxDistancePreset, distanceCenter, refOpenMode, topKeywordFilter, selectedConveniences, convenienceMode, keywords, advancedRules, advMode, filterFieldMap])
 
-  const viewRows = useMemo(() => sortRows(filteredRows, sort), [filteredRows, sort])
+  const viewRows = filteredRows
 
   const statusBadges = useMemo(() => {
     const list: string[] = []
@@ -988,9 +965,9 @@ function App() {
     if (maxDistancePreset != null) list.push(`최대 거리 ${numFmt.format(maxDistancePreset)}m`)
     if (selectedConveniences.length > 0) list.push(`편의시설 ${selectedConveniences.length}`)
     if (advancedRules.length > 0) list.push(`고급규칙 ${advancedRules.length}`)
-    if (sort.length > 0) list.push(`정렬 ${sort.length}`)
+    if (sorting.length > 0) list.push(`정렬 ${sorting.length}`)
     return list
-  }, [keywords.length, minReviewPreset, maxDistancePreset, selectedConveniences.length, advancedRules.length, sort.length])
+  }, [keywords.length, minReviewPreset, maxDistancePreset, selectedConveniences.length, advancedRules.length, sorting.length])
 
   const centerSelectPlaceholder = centerSearchResults.length
     ? "검색 결과에서 기준점을 선택하세요"
@@ -1100,7 +1077,7 @@ function App() {
       const nextRows = parseJsonToRows(payload)
 
       setRows(nextRows)
-      setSort([])
+      setSorting([])
       setSelectedConveniences([])
       setAdvancedRules([])
       setNextRuleId(1)
@@ -1150,32 +1127,6 @@ function App() {
       window.removeEventListener("drop", onDrop)
     }
   }, [loadJsonText])
-
-  const updateSort = (key: ColumnDef["key"], isMulti: boolean) => {
-    setSort((prev) => {
-      const next = [...prev]
-      const idx = next.findIndex((item) => item.key === key)
-
-      if (isMulti) {
-        if (idx < 0) {
-          next.push({ key, dir: "asc" })
-        } else if (next[idx].dir === "asc") {
-          next[idx] = { ...next[idx], dir: "desc" }
-        } else {
-          next.splice(idx, 1)
-        }
-        return next
-      }
-
-      if (idx === 0 && next.length === 1 && next[0].dir === "asc") {
-        return [{ key, dir: "desc" }]
-      }
-      if (idx === 0 && next.length === 1 && next[0].dir === "desc") {
-        return []
-      }
-      return [{ key, dir: "asc" }]
-    })
-  }
 
   const handleCenterFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -1268,17 +1219,17 @@ function App() {
     setConvenienceMode("all")
     setAdvMode("all")
     setAccordionValues(["convenience", "advanced"])
-    setSort([])
+    setSorting([])
     setSelectedConveniences([])
     setAdvancedRules([])
     setStatusError(null)
   }
 
-  const getSortMarker = (key: ColumnDef["key"]): string => {
-    const idx = sort.findIndex((item) => item.key === key)
+  const getSortMarker = (columnId: string): string => {
+    const idx = sorting.findIndex((item) => item.id === columnId)
     if (idx < 0) return ""
-    const item = sort[idx]
-    return `${idx + 1}${item.dir === "asc" ? "▲" : "▼"}`
+    const item = sorting[idx]
+    return `${idx + 1}${item.desc ? "▼" : "▲"}`
   }
 
   const renderCell = (row: PlaceRow, column: ColumnDef) => {
@@ -1309,6 +1260,53 @@ function App() {
 
     return toText(row[column.key]) || "-"
   }
+
+  const desktopTableColumns: TanstackColumnDef<PlaceRow>[] = columns.map((column) => ({
+    id: String(column.key),
+    accessorFn: (row) => row[column.key as keyof PlaceRow],
+    enableSorting: true,
+    header: ({ column: tableColumn }) => {
+      const marker = getSortMarker(tableColumn.id)
+      return (
+        <Button
+          type="button"
+          variant="ghost"
+          className="h-auto w-full justify-start px-0 py-0 text-xs font-semibold"
+          onClick={tableColumn.getToggleSortingHandler()}
+        >
+          <span>{column.label}</span>
+          {marker ? <Badge variant="outline" className="ml-1 text-[10px]">{marker}</Badge> : null}
+        </Button>
+      )
+    },
+    cell: ({ row }) => {
+      const classNames: string[] = ["block"]
+      if (column.type === "number") classNames.push("text-right tabular-nums")
+      if (column.key === "petFriendly") {
+        classNames.push(row.original.petFriendly ? "text-emerald-600 font-semibold" : "text-red-600 font-semibold")
+      }
+      if (column.key === "openAtRefRank") {
+        if (row.original.openAtRefCode === "open") classNames.push("text-emerald-600 font-semibold")
+        else if (row.original.openAtRefCode === "break") classNames.push("text-amber-600 font-semibold")
+        else if (row.original.openAtRefCode === "closed" || row.original.openAtRefLabel === "휴무") {
+          classNames.push("text-red-600 font-semibold")
+        } else {
+          classNames.push("text-muted-foreground font-semibold")
+        }
+      }
+      return <span className={classNames.join(" ")}>{renderCell(row.original, column)}</span>
+    },
+  }))
+
+  const table = useReactTable({
+    data: viewRows,
+    columns: desktopTableColumns,
+    state: { sorting },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    enableMultiSort: true,
+  })
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_0%_0%,rgba(15,118,110,0.14),transparent_42%),radial-gradient(circle_at_100%_0%,rgba(59,130,246,0.14),transparent_40%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] p-3 md:p-5">
@@ -1506,17 +1504,17 @@ function App() {
                   <Separator />
 
                   <div id="sortChips" className="flex flex-wrap gap-2">
-                    {sort.map((item, idx) => {
-                      const col = columns.find((c) => c.key === item.key)
+                    {sorting.map((item, idx) => {
+                      const col = columns.find((c) => String(c.key) === item.id)
                       return (
-                        <Badge key={item.key} variant="secondary" className="gap-2">
-                          {idx + 1}. {col ? col.label : item.key} {item.dir === "asc" ? "▲" : "▼"}
+                        <Badge key={item.id} variant="secondary" className="gap-2">
+                          {idx + 1}. {col ? col.label : item.id} {item.desc ? "▼" : "▲"}
                           <Button
                             type="button"
                             variant="ghost"
                             size="icon"
                             className="size-5 text-destructive hover:text-destructive"
-                            onClick={() => setSort((prev) => prev.filter((rule) => rule.key !== item.key))}
+                            onClick={() => setSorting((prev) => prev.filter((rule) => rule.id !== item.id))}
                           >
                             <X className="size-3" />
                           </Button>
@@ -1712,44 +1710,47 @@ function App() {
             <CardContent className="pb-4">
               <ScrollArea className="h-[min(72vh,860px)] rounded-md border bg-background md:hidden">
                 <div className="space-y-2 p-2">
-                  {!viewRows.length ? (
+                  {!table.getRowModel().rows.length ? (
                     <div className="py-8 text-center text-sm text-muted-foreground">
                       데이터가 없습니다. 파일을 불러오거나 필터를 완화해 주세요.
                     </div>
                   ) : (
-                    viewRows.map((row) => (
-                      <div key={`${row.id}-${row._index}`} className="space-y-2 rounded-lg border bg-card p-3">
-                        <div className="flex items-start justify-between gap-2">
-                          {row.mapUrl ? (
-                            <a className="font-semibold text-primary hover:underline" href={row.mapUrl} target="_blank" rel="noreferrer noopener">
-                              {row.name || "(이름 없음)"}
-                            </a>
-                          ) : (
-                            <span className="font-semibold">{row.name || "(이름 없음)"}</span>
-                          )}
-                          <Badge variant="outline">{row.openAtRefLabel || "-"}</Badge>
+                    table.getRowModel().rows.map((rowModel) => {
+                      const row = rowModel.original
+                      return (
+                        <div key={rowModel.id} className="space-y-2 rounded-lg border bg-card p-3">
+                          <div className="flex items-start justify-between gap-2">
+                            {row.mapUrl ? (
+                              <a className="font-semibold text-primary hover:underline" href={row.mapUrl} target="_blank" rel="noreferrer noopener">
+                                {row.name || "(이름 없음)"}
+                              </a>
+                            ) : (
+                              <span className="font-semibold">{row.name || "(이름 없음)"}</span>
+                            )}
+                            <Badge variant="outline">{row.openAtRefLabel || "-"}</Badge>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div className="space-y-1">
+                              <div className="text-muted-foreground">카테고리</div>
+                              <div className="break-words">{row.category || "-"}</div>
+                            </div>
+                            <div className="space-y-1">
+                              <div className="text-muted-foreground">리뷰수</div>
+                              <div className="tabular-nums">{numFmt.format(row.reviewCount)}</div>
+                            </div>
+                            <div className="space-y-1">
+                              <div className="text-muted-foreground">거리</div>
+                              <div className="tabular-nums">{row.distanceM == null ? "-" : `${numFmt.format(row.distanceM)}m`}</div>
+                            </div>
+                            <div className="space-y-1">
+                              <div className="text-muted-foreground">키워드</div>
+                              <div className="break-words">{row.topKeyword || "-"}</div>
+                            </div>
+                          </div>
+                          <div className="text-xs text-muted-foreground break-words">{row.address || "-"}</div>
                         </div>
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div className="space-y-1">
-                            <div className="text-muted-foreground">카테고리</div>
-                            <div className="break-words">{row.category || "-"}</div>
-                          </div>
-                          <div className="space-y-1">
-                            <div className="text-muted-foreground">리뷰수</div>
-                            <div className="tabular-nums">{numFmt.format(row.reviewCount)}</div>
-                          </div>
-                          <div className="space-y-1">
-                            <div className="text-muted-foreground">거리</div>
-                            <div className="tabular-nums">{row.distanceM == null ? "-" : `${numFmt.format(row.distanceM)}m`}</div>
-                          </div>
-                          <div className="space-y-1">
-                            <div className="text-muted-foreground">키워드</div>
-                            <div className="break-words">{row.topKeyword || "-"}</div>
-                          </div>
-                        </div>
-                        <div className="text-xs text-muted-foreground break-words">{row.address || "-"}</div>
-                      </div>
-                    ))
+                      )
+                    })
                   )}
                 </div>
               </ScrollArea>
@@ -1758,57 +1759,31 @@ function App() {
                 <div className="min-w-[760px]">
                   <Table>
                     <TableHeader id="head" className="sticky top-0 z-10 bg-muted/70 backdrop-blur supports-[backdrop-filter]:bg-muted/70">
-                      <TableRow>
-                        {columns.map((column) => {
-                          const marker = getSortMarker(column.key)
-                          return (
-                            <TableHead key={column.key}>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                className="h-auto w-full justify-start px-0 py-0 text-xs font-semibold"
-                                onClick={(event) => updateSort(column.key, event.shiftKey)}
-                              >
-                                <span>{column.label}</span>
-                                {marker ? <Badge variant="outline" className="ml-1 text-[10px]">{marker}</Badge> : null}
-                              </Button>
+                      {table.getHeaderGroups().map((headerGroup) => (
+                        <TableRow key={headerGroup.id}>
+                          {headerGroup.headers.map((header) => (
+                            <TableHead key={header.id}>
+                              {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                             </TableHead>
-                          )
-                        })}
-                      </TableRow>
+                          ))}
+                        </TableRow>
+                      ))}
                     </TableHeader>
                     <TableBody id="body">
-                      {!viewRows.length ? (
+                      {!table.getRowModel().rows.length ? (
                         <TableRow>
                           <TableCell colSpan={columns.length} className="py-8 text-center text-muted-foreground">
                             데이터가 없습니다. 파일을 불러오거나 필터를 완화해 주세요.
                           </TableCell>
                         </TableRow>
                       ) : (
-                        viewRows.map((row) => (
-                          <TableRow key={`${row.id}-${row._index}`}>
-                            {columns.map((column) => {
-                              const classNames: string[] = []
-                              if (column.type === "number") classNames.push("text-right tabular-nums")
-                              if (column.key === "petFriendly") {
-                                classNames.push(row.petFriendly ? "text-emerald-600 font-semibold" : "text-red-600 font-semibold")
-                              }
-                              if (column.key === "openAtRefRank") {
-                                if (row.openAtRefCode === "open") classNames.push("text-emerald-600 font-semibold")
-                                else if (row.openAtRefCode === "break") classNames.push("text-amber-600 font-semibold")
-                                else if (row.openAtRefCode === "closed" || row.openAtRefLabel === "휴무") {
-                                  classNames.push("text-red-600 font-semibold")
-                                } else {
-                                  classNames.push("text-muted-foreground font-semibold")
-                                }
-                              }
-
-                              return (
-                                <TableCell key={`${row.id}-${column.key}`} className={classNames.join(" ")}>
-                                  {renderCell(row, column)}
-                                </TableCell>
-                              )
-                            })}
+                        table.getRowModel().rows.map((row) => (
+                          <TableRow key={row.id}>
+                            {row.getVisibleCells().map((cell) => (
+                              <TableCell key={cell.id}>
+                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                              </TableCell>
+                            ))}
                           </TableRow>
                         ))
                       )}
