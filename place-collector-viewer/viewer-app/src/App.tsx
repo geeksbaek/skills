@@ -1322,10 +1322,10 @@ function App() {
       <div data-ui="div-007" className="mx-auto flex w-full max-w-[1600px] flex-col gap-3 xl:h-full xl:min-h-0">
         <div data-ui="div-018" className="grid gap-3 xl:min-h-0 xl:flex-1 xl:grid-cols-[430px_minmax(0,1fr)]">
           <Card data-ui="card-019" className="border-slate-200/80 shadow-xl shadow-slate-900/5 xl:flex xl:h-full xl:min-h-0 xl:flex-col">
-            <CardHeader data-ui="card-019-header" className="space-y-2 px-4 pb-3 pt-4 md:px-5 md:pt-5">
+            <CardHeader data-ui="card-019-header" className="space-y-2 px-4 py-0 md:px-5">
               <CardTitle data-ui="card-019-title" className="text-xl font-semibold">Place Datagrid</CardTitle>
             </CardHeader>
-            <CardContent data-ui="card-content-020" className="px-4 pb-4 pt-0 md:px-5 md:pb-5 xl:flex xl:min-h-0 xl:flex-1">
+            <CardContent data-ui="card-content-020" className="px-4 py-0 md:px-5 xl:flex xl:min-h-0 xl:flex-1">
               <ScrollArea data-ui="scroll-area-021" className="h-[min(72vh,860px)] pr-2 xl:h-full">
                 <div data-ui="div-022" className="space-y-4">
                   <div data-ui="div-023" className="space-y-2">
@@ -1680,7 +1680,7 @@ function App() {
           </Card>
 
           <Card data-ui="card-140" className="border-slate-200/80 shadow-xl shadow-slate-900/5 xl:flex xl:h-full xl:min-h-0 xl:flex-col">
-            <CardHeader data-ui="card-header-141" className="space-y-2 px-4 pb-3 pt-4 md:px-5 md:pt-5">
+            <CardHeader data-ui="card-header-141" className="space-y-2 px-4 py-0 md:px-5">
               <div data-ui="div-142" id="status" className="space-y-2">
                 {statusError ? (
                   <div data-ui="div-143" className="text-sm font-medium text-red-600">{statusError}</div>
@@ -1702,7 +1702,7 @@ function App() {
                 )}
               </div>
             </CardHeader>
-            <CardContent data-ui="card-content-149" className="px-4 pb-4 pt-0 md:px-5 md:pb-5 xl:flex xl:min-h-0 xl:flex-1 xl:flex-col">
+            <CardContent data-ui="card-content-149" className="px-4 py-0 md:px-5 xl:flex xl:min-h-0 xl:flex-1 xl:flex-col">
               <ScrollArea data-ui="scroll-area-150" className="h-[min(72vh,860px)] rounded-lg border bg-background md:hidden xl:h-full">
                 <div data-ui="div-151" className="space-y-3 p-3">
                   {!table.getRowModel().rows.length ? (
