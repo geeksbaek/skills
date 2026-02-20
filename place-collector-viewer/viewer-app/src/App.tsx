@@ -263,9 +263,9 @@ const APP_SURFACE_CLASS = "min-h-screen bg-[radial-gradient(circle_at_0%_0%,rgba
 const APP_CONTENT_CLASS = "mx-auto flex w-full max-w-[1600px] flex-col gap-4 xl:h-full xl:min-h-0"
 const APP_GRID_CLASS = "grid gap-4 xl:min-h-0 xl:flex-1 xl:grid-cols-[430px_minmax(0,1fr)]"
 const CARD_HEADER_CLASS = "space-y-2 px-4 py-0 md:px-5"
-const CARD_CONTENT_CLASS = "px-4 py-0 md:px-5 xl:flex xl:min-h-0 xl:flex-1"
-const PANEL_STACK_CLASS = "space-y-4"
-const FIELD_STACK_CLASS = "space-y-2"
+const CARD_CONTENT_CLASS = "min-w-0 px-4 py-0 md:px-5 xl:flex xl:min-h-0 xl:flex-1"
+const PANEL_STACK_CLASS = "min-w-0 w-full max-w-full space-y-4"
+const FIELD_STACK_CLASS = "min-w-0 space-y-2"
 const CHIP_ROW_CLASS = "flex flex-wrap gap-2"
 const TWO_COL_GRID_CLASS = "grid gap-3 sm:grid-cols-2"
 const ACTION_ROW_CLASS = "flex flex-wrap items-end gap-3"
@@ -1331,7 +1331,11 @@ function App() {
               <CardTitle data-ui="card-019-title" className="text-xl font-semibold">Place Datagrid</CardTitle>
             </CardHeader>
             <CardContent data-ui="card-content-020" className={CARD_CONTENT_CLASS}>
-              <ScrollArea data-ui="scroll-area-021" className="h-[min(72vh,860px)] xl:h-full" viewportClassName="px-2">
+              <ScrollArea
+                data-ui="scroll-area-021"
+                className="h-[min(72vh,860px)] w-full min-w-0 xl:h-full"
+                viewportClassName="px-2 [&>div]:!block [&>div]:!w-full [&>div]:!min-w-0"
+              >
                 <div data-ui="div-022" className={PANEL_STACK_CLASS}>
                   <div data-ui="div-023" className={FIELD_STACK_CLASS}>
                     <label data-ui="label-024" className="text-xs font-semibold text-muted-foreground" htmlFor="fileInput">JSON 파일</label>
@@ -1406,11 +1410,11 @@ function App() {
                           variant="outline"
                           role="combobox"
                           aria-expanded={centerSearchSelectOpen}
-                          className={`w-full justify-between ${ACTIVE_FIELD_CLASS}`}
+                          className={`w-full max-w-full justify-between overflow-hidden ${ACTIVE_FIELD_CLASS}`}
                         >
                           <span
                             data-ui="center-combobox-trigger-label"
-                            className={`truncate text-left ${selectedCenterSearchResult || centerSearchInput.trim() ? "" : "text-muted-foreground"}`}
+                            className={`min-w-0 max-w-full flex-1 truncate text-left ${selectedCenterSearchResult || centerSearchInput.trim() ? "" : "text-muted-foreground"}`}
                           >
                             {centerComboboxLabel}
                           </span>
