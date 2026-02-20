@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
+  Check,
+  ChevronsUpDown,
   Loader2,
   RotateCcw,
-  Search,
   X,
 } from "lucide-react"
 import {
@@ -18,7 +19,9 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Input } from "@/components/ui/input"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
@@ -264,13 +267,14 @@ const CARD_CONTENT_CLASS = "px-4 py-0 md:px-5 xl:flex xl:min-h-0 xl:flex-1"
 const PANEL_STACK_CLASS = "space-y-4"
 const FIELD_STACK_CLASS = "space-y-2"
 const CHIP_ROW_CLASS = "flex flex-wrap gap-2"
-const FORM_GRID_CLASS = "grid gap-3 md:grid-cols-[1fr_1.2fr_auto]"
 const TWO_COL_GRID_CLASS = "grid gap-3 sm:grid-cols-2"
 const ACTION_ROW_CLASS = "flex flex-wrap items-end gap-3"
 const ACCORDION_CLASS = "rounded-lg border bg-muted/30 px-3 py-1"
 const ACCORDION_CONTENT_STACK_CLASS = "space-y-4"
 const MOBILE_LIST_CLASS = "space-y-3 p-3"
 const MOBILE_ROW_CARD_CLASS = "space-y-3 rounded-lg border bg-card p-3"
+const CENTER_SEARCH_MIN_QUERY = 2
+const CENTER_SEARCH_DEBOUNCE_MS = 320
 const CENTER_SEARCH_ENDPOINT = "https://nominatim.openstreetmap.org/search"
 const CENTER_SEARCH_FALLBACK_ENDPOINT = "https://photon.komoot.io/api/"
 const CENTER_SEARCH_LIMIT = 8
@@ -759,29 +763,6 @@ function passAdvancedFilters(row: PlaceRow, rules: AdvancedRule[], mode: RuleMod
   return mode === "any" ? results.some(Boolean) : results.every(Boolean)
 }
 
-function getCenterSearchResultIdFromInput(inputValue: string, results: CenterSearchResult[]): string | null {
-  const normalized = inputValue.trim()
-  if (!normalized) return null
-
-  const indexMatched = normalized.match(/^(\d+)\.\s*/)
-  if (indexMatched) {
-    const idx = Number(indexMatched[1]) - 1
-    if (Number.isInteger(idx) && idx >= 0 && idx < results.length) {
-      return results[idx].id
-    }
-  }
-
-  const labelOnly = normalized.replace(/^\d+\.\s*/, "").trim()
-  if (!labelOnly) return null
-
-  const exact = results.find((item) => item.label === labelOnly)
-  if (exact) return exact.id
-
-  const lower = labelOnly.toLowerCase()
-  const partial = results.find((item) => item.label.toLowerCase().includes(lower))
-  return partial ? partial.id : null
-}
-
 function toCenterSearchOptionText(item: CenterSearchResult, index: number): string {
   return `${index + 1}. ${item.label}`
 }
@@ -993,9 +974,11 @@ function App() {
     return list
   }, [keywords.length, minReviewPreset, maxDistancePreset, selectedConveniences.length, advancedRules.length, sorting.length])
 
-  const centerSelectPlaceholder = centerSearchResults.length
-    ? "검색 결과에서 기준점을 선택하세요"
-    : "검색 결과 옵션을 선택하세요"
+  const selectedCenterSearchResult = useMemo(
+    () => centerSearchResults.find((item) => item.id === selectedCenterSearchResultId) ?? null,
+    [centerSearchResults, selectedCenterSearchResultId]
+  )
+  const centerComboboxLabel = selectedCenterSearchResult?.label || centerSearchInput.trim() || "주소/건물명을 입력해 검색하세요"
 
   const getFieldDef = (fieldKey: string): FieldDef | undefined => filterFieldMap.get(fieldKey)
 
@@ -1005,32 +988,23 @@ function App() {
     setCenterSearchSelectOpen(false)
   }, [])
 
-  const applyCenterSearchResultById = (resultId: string, options?: { silentStatus?: boolean }): boolean => {
+  const applyCenterSearchResultById = useCallback((resultId: string, options?: { silentStatus?: boolean }): boolean => {
     const selected = centerSearchResults.find((item) => item.id === resultId)
     if (!selected) return false
 
-    const index = centerSearchResults.findIndex((item) => item.id === resultId)
     setDistanceCenter({ x: selected.x, y: selected.y })
     setSelectedCenterSearchResultId(resultId)
     setCenterSearchSelectOpen(false)
-    if (index >= 0) {
-      setCenterSearchInput(toCenterSearchOptionText(centerSearchResults[index], index))
-    }
+    setCenterSearchInput(selected.label)
 
     if (!options?.silentStatus) {
       setCenterSearchStatus({ message: `기준점 적용: ${selected.label}`, tone: "ok" })
     }
     return true
-  }
+  }, [centerSearchResults])
 
-  const applyCenterSearchResultFromInput = (options?: { silentStatus?: boolean }): boolean => {
-    const resultId = getCenterSearchResultIdFromInput(centerSearchInput, centerSearchResults)
-    if (!resultId) return false
-    return applyCenterSearchResultById(resultId, options)
-  }
-
-  const searchDistanceCenter = async () => {
-    const query = centerSearchInput.trim()
+  const searchDistanceCenter = useCallback(async (queryInput?: string) => {
+    const query = (queryInput ?? centerSearchInput).trim()
     if (!query) {
       setCenterSearchStatus({ message: "검색어를 입력하세요. 예: 상현역, 광교호수공원", tone: "warn" })
       return
@@ -1038,7 +1012,6 @@ function App() {
 
     const seq = centerSearchSeqRef.current + 1
     centerSearchSeqRef.current = seq
-    setCenterSearchSelectOpen(false)
     setCenterSearchLoading(true)
     setCenterSearchStatus({ message: `주소 검색 중: ${query}`, tone: "muted" })
 
@@ -1071,8 +1044,9 @@ function App() {
         .filter((item): item is CenterSearchResult => item !== null)
 
       setCenterSearchResults(nextResults)
-      setSelectedCenterSearchResultId("")
-      setCenterSearchSelectOpen(false)
+      setSelectedCenterSearchResultId((prevId) =>
+        nextResults.some((item) => item.id === prevId) ? prevId : ""
+      )
 
       if (!nextResults.length) {
         const suffix = lastErrorMessage ? ` (${lastErrorMessage})` : ""
@@ -1081,7 +1055,7 @@ function App() {
       }
 
       setCenterSearchStatus({
-        message: `${nextResults.length}건 검색됨 (${providerLabel}) · Select를 열어 기준점을 선택하세요.`,
+        message: `${nextResults.length}건 검색됨 (${providerLabel}) · 옵션을 선택해 기준점을 적용하세요.`,
         tone: "ok",
       })
     } catch (error) {
@@ -1093,7 +1067,30 @@ function App() {
         setCenterSearchLoading(false)
       }
     }
-  }
+  }, [centerSearchInput])
+
+  useEffect(() => {
+    if (!centerSearchSelectOpen) return
+    const query = centerSearchInput.trim()
+
+    if (!query) {
+      setCenterSearchResults([])
+      setCenterSearchStatus({ message: "주소/건물명을 입력하면 자동으로 검색됩니다.", tone: "muted" })
+      return
+    }
+
+    if (query.length < CENTER_SEARCH_MIN_QUERY) {
+      setCenterSearchResults([])
+      setCenterSearchStatus({ message: `${CENTER_SEARCH_MIN_QUERY}글자 이상 입력해 주세요.`, tone: "muted" })
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      void searchDistanceCenter(query)
+    }, CENTER_SEARCH_DEBOUNCE_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [centerSearchInput, centerSearchSelectOpen, searchDistanceCenter])
 
   const loadJsonText = useCallback((text: string) => {
     try {
@@ -1151,13 +1148,6 @@ function App() {
       window.removeEventListener("drop", onDrop)
     }
   }, [loadJsonText])
-
-  const handleCenterFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    if (!applyCenterSearchResultFromInput()) {
-      void searchDistanceCenter()
-    }
-  }
 
   const addAdvancedRule = () => {
     if (!filterFields.length) return
@@ -1395,58 +1385,88 @@ function App() {
                   </div>
 
                   <div data-ui="div-038" className={FIELD_STACK_CLASS}>
-                    <label data-ui="label-039" className="text-xs font-semibold text-muted-foreground" htmlFor="centerSearchInput">
+                    <label data-ui="label-039" className="text-xs font-semibold text-muted-foreground" htmlFor="centerSearchSelectTrigger">
                       거리 기준 주소/건물명
                     </label>
-                    <form data-ui="form-040" id="centerSearchForm" className={FORM_GRID_CLASS} onSubmit={handleCenterFormSubmit}>
-                      <Input data-ui="input-041"
-                        className={ACTIVE_FIELD_CLASS}
-                        id="centerSearchInput"
-                        value={centerSearchInput}
-                        onChange={(event) => setCenterSearchInput(event.target.value)}
-                        onBlur={() => {
-                          applyCenterSearchResultFromInput({ silentStatus: true })
-                        }}
-                        placeholder="예: 상현역, 광교호수공원"
-                      />
-                      <div data-ui="div-042" id="centerSearchSelectRoot" className="w-full">
-                        <Select data-ui="select-043"
-                          open={centerSearchSelectOpen}
-                          onOpenChange={(open) => {
-                            if (!centerSearchResults.length && open) {
-                              setCenterSearchStatus({
-                                message: "검색 결과가 없습니다. 먼저 주소/건물명을 검색하세요.",
-                                tone: "warn",
-                              })
-                              return
-                            }
-                            setCenterSearchSelectOpen(open)
-                          }}
-                          value={selectedCenterSearchResultId || undefined}
-                          onValueChange={(value) => {
-                            applyCenterSearchResultById(value)
-                          }}
+                    <Popover
+                      data-ui="center-combobox-root"
+                      open={centerSearchSelectOpen}
+                      onOpenChange={(open) => {
+                        setCenterSearchSelectOpen(open)
+                        if (open && !centerSearchInput.trim()) {
+                          setCenterSearchStatus({ message: "주소/건물명을 입력하면 자동으로 검색됩니다.", tone: "muted" })
+                        }
+                      }}
+                    >
+                      <PopoverTrigger data-ui="center-combobox-trigger-wrapper" asChild>
+                        <Button
+                          data-ui="center-combobox-trigger"
+                          id="centerSearchSelectTrigger"
+                          type="button"
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={centerSearchSelectOpen}
+                          className={`w-full justify-between ${ACTIVE_FIELD_CLASS}`}
                         >
-                          <SelectTrigger data-ui="select-trigger-044" id="centerSearchSelectTrigger" className={`w-full ${ACTIVE_FIELD_CLASS}`}>
-                            <SelectValue data-ui="select-value-045"
-                              id="centerSearchSelectValue"
-                              placeholder={centerSelectPlaceholder}
-                            />
-                          </SelectTrigger>
-                          <SelectContent data-ui="select-content-046" id="centerSearchOptions" className="max-h-72">
-                            {centerSearchResults.map((item, idx) => (
-                              <SelectItem data-ui={`center-search-option-${uiToken(item.id)}`} key={item.id} value={item.id}>
-                                {toCenterSearchOptionText(item, idx)}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <Button data-ui="button-048" id="searchCenterBtn" type="submit" variant="secondary" className="w-full md:w-auto">
-                        {centerSearchLoading ? <Loader2 data-ui="loader2-049" className="size-4 animate-spin" /> : <Search data-ui="search-050" className="size-4" />}
-                        {centerSearchLoading ? "검색중..." : "검색"}
-                      </Button>
-                    </form>
+                          <span
+                            data-ui="center-combobox-trigger-label"
+                            className={`truncate text-left ${selectedCenterSearchResult || centerSearchInput.trim() ? "" : "text-muted-foreground"}`}
+                          >
+                            {centerComboboxLabel}
+                          </span>
+                          {centerSearchLoading ? (
+                            <Loader2 data-ui="center-combobox-loading-icon" className="size-4 animate-spin opacity-70" />
+                          ) : (
+                            <ChevronsUpDown data-ui="center-combobox-toggle-icon" className="size-4 opacity-50" />
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        data-ui="center-combobox-content"
+                        id="centerSearchOptions"
+                        align="start"
+                        className="w-[var(--radix-popover-trigger-width)] p-0"
+                      >
+                        <Command data-ui="center-combobox-command" shouldFilter={false}>
+                          <CommandInput
+                            data-ui="center-combobox-input"
+                            id="centerSearchInput"
+                            value={centerSearchInput}
+                            onValueChange={setCenterSearchInput}
+                            placeholder="예: 상현역, 광교호수공원"
+                          />
+                          <CommandList data-ui="center-combobox-list">
+                            <CommandEmpty data-ui="center-combobox-empty">
+                              {centerSearchLoading
+                                ? "검색 중입니다..."
+                                : centerSearchInput.trim().length < CENTER_SEARCH_MIN_QUERY
+                                  ? `${CENTER_SEARCH_MIN_QUERY}글자 이상 입력해 주세요.`
+                                  : "검색 결과가 없습니다."}
+                            </CommandEmpty>
+                            <CommandGroup data-ui="center-combobox-group" heading={centerSearchResults.length ? "검색 결과" : undefined}>
+                              {centerSearchResults.map((item, idx) => (
+                                <CommandItem
+                                  data-ui={`center-search-option-${uiToken(item.id)}`}
+                                  key={item.id}
+                                  value={item.id}
+                                  onSelect={(value) => {
+                                    applyCenterSearchResultById(value)
+                                  }}
+                                >
+                                  <span data-ui={`center-search-option-label-${uiToken(item.id)}`} className="truncate">
+                                    {toCenterSearchOptionText(item, idx)}
+                                  </span>
+                                  <Check
+                                    data-ui={`center-search-option-check-${uiToken(item.id)}`}
+                                    className={`ml-auto size-4 ${selectedCenterSearchResultId === item.id ? "opacity-100" : "opacity-0"}`}
+                                  />
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                     <p data-ui="p-051"
                       id="centerSearchStatus"
                       data-tone={centerSearchStatus.tone}
