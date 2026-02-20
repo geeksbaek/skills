@@ -914,6 +914,20 @@ function App() {
     })
   }, [rows, distanceCenter, referenceDateTime])
 
+  const showDistanceColumn = distanceCenter !== null
+  const visibleColumns = useMemo(
+    () => (showDistanceColumn ? columns : columns.filter((column) => column.key !== "distanceM")),
+    [showDistanceColumn]
+  )
+
+  useEffect(() => {
+    if (showDistanceColumn) return
+    setSorting((prev) => {
+      const next = prev.filter((item) => item.id !== "distanceM")
+      return next.length === prev.length ? prev : next
+    })
+  }, [showDistanceColumn])
+
   const filteredRows = useMemo(() => {
     return rowsWithComputed.filter((row) => {
       if (row.reviewCount < minReviewPreset) return false
@@ -1272,7 +1286,7 @@ function App() {
     return toText(row[column.key]) || "-"
   }
 
-  const desktopTableColumns: TanstackColumnDef<PlaceRow>[] = columns.map((column) => ({
+  const desktopTableColumns: TanstackColumnDef<PlaceRow>[] = visibleColumns.map((column) => ({
     id: String(column.key),
     accessorFn: (row) => row[column.key as keyof PlaceRow],
     enableSorting: true,
@@ -1536,7 +1550,7 @@ function App() {
 
                   <div data-ui="div-082" id="sortChips" className={CHIP_ROW_CLASS}>
                     {sorting.map((item, idx) => {
-                      const col = columns.find((c) => String(c.key) === item.id)
+                      const col = visibleColumns.find((c) => String(c.key) === item.id)
                       return (
                         <Badge data-ui={`sort-chip-${idx}-${uiToken(item.id)}`} key={item.id} variant="secondary" className="gap-2">
                           {idx + 1}. {col ? col.label : item.id} {item.desc ? "▼" : "▲"}
@@ -1769,10 +1783,12 @@ function App() {
                               <div data-ui={`mobile-row-reviews-label-${uiToken(rowModel.id)}`} className="text-muted-foreground">리뷰수</div>
                               <div data-ui={`mobile-row-reviews-value-${uiToken(rowModel.id)}`} className="tabular-nums">{numFmt.format(row.reviewCount)}</div>
                             </div>
-                            <div data-ui={`mobile-row-distance-${uiToken(rowModel.id)}`} className="space-y-1">
-                              <div data-ui={`mobile-row-distance-label-${uiToken(rowModel.id)}`} className="text-muted-foreground">거리</div>
-                              <div data-ui={`mobile-row-distance-value-${uiToken(rowModel.id)}`} className="tabular-nums">{row.distanceM == null ? "-" : `${numFmt.format(row.distanceM)}m`}</div>
-                            </div>
+                            {showDistanceColumn ? (
+                              <div data-ui={`mobile-row-distance-${uiToken(rowModel.id)}`} className="space-y-1">
+                                <div data-ui={`mobile-row-distance-label-${uiToken(rowModel.id)}`} className="text-muted-foreground">거리</div>
+                                <div data-ui={`mobile-row-distance-value-${uiToken(rowModel.id)}`} className="tabular-nums">{row.distanceM == null ? "-" : `${numFmt.format(row.distanceM)}m`}</div>
+                              </div>
+                            ) : null}
                             <div data-ui={`mobile-row-keyword-${uiToken(rowModel.id)}`} className="space-y-1">
                               <div data-ui={`mobile-row-keyword-label-${uiToken(rowModel.id)}`} className="text-muted-foreground">키워드</div>
                               <div data-ui={`mobile-row-keyword-value-${uiToken(rowModel.id)}`} className="break-words">{row.topKeyword || "-"}</div>
@@ -1803,7 +1819,7 @@ function App() {
                     <TableBody data-ui="table-body-178" id="body">
                       {!table.getRowModel().rows.length ? (
                         <TableRow data-ui="table-row-179">
-                          <TableCell data-ui="table-cell-180" colSpan={columns.length} className="py-8 text-center text-muted-foreground">
+                          <TableCell data-ui="table-cell-180" colSpan={visibleColumns.length} className="py-8 text-center text-muted-foreground">
                             데이터가 없습니다. 파일을 불러오거나 필터를 완화해 주세요.
                           </TableCell>
                         </TableRow>
