@@ -1319,7 +1319,7 @@ function App() {
   return (
     <div data-ui="div-006" className="min-h-screen bg-[radial-gradient(circle_at_0%_0%,rgba(15,118,110,0.14),transparent_42%),radial-gradient(circle_at_100%_0%,rgba(59,130,246,0.14),transparent_40%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] p-3 md:p-5">
       <div data-ui="div-007" className="mx-auto flex w-full max-w-[1600px] flex-col gap-3">
-        <div data-ui="div-008" className="grid gap-3 xl:grid-cols-[1.2fr_1fr]">
+        <div data-ui="div-008" className="grid gap-3">
           <Card data-ui="card-009">
             <CardHeader data-ui="card-header-010">
               <CardTitle data-ui="card-title-011" className="text-3xl font-bold tracking-tight">플레이스 데이터그리드</CardTitle>
@@ -1327,13 +1327,6 @@ function App() {
                 React + shadcn/ui 기반 뷰어입니다. JSON(객체/배열) 로드 후 정렬, 복합 필터, 기준점 거리 계산,
                 고급 규칙 필터를 지원합니다.
               </CardDescription>
-            </CardHeader>
-          </Card>
-          <Card data-ui="card-013">
-            <CardHeader data-ui="card-header-014" className="gap-3">
-              <Badge data-ui="badge-015" variant="secondary" className="w-fit text-xs">1. JSON 업로드</Badge>
-              <Badge data-ui="badge-016" variant="secondary" className="w-fit text-xs">2. 조건 선택</Badge>
-              <Badge data-ui="badge-017" variant="secondary" className="w-fit text-xs">3. 결과 확인</Badge>
             </CardHeader>
           </Card>
         </div>
