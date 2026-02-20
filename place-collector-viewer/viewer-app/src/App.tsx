@@ -17,7 +17,7 @@ import {
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -1317,24 +1317,15 @@ function App() {
   })
 
   return (
-    <div data-ui="div-006" className="min-h-screen bg-[radial-gradient(circle_at_0%_0%,rgba(15,118,110,0.14),transparent_42%),radial-gradient(circle_at_100%_0%,rgba(59,130,246,0.14),transparent_40%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] p-3 md:p-5">
-      <div data-ui="div-007" className="mx-auto flex w-full max-w-[1600px] flex-col gap-3">
-        <div data-ui="div-008" className="grid gap-3">
-          <Card data-ui="card-009">
-            <CardHeader data-ui="card-header-010">
-              <CardTitle data-ui="card-title-011" className="text-3xl font-bold tracking-tight">플레이스 데이터그리드</CardTitle>
-              <CardDescription data-ui="card-description-012" className="text-sm leading-relaxed">
-                React + shadcn/ui 기반 뷰어입니다. JSON(객체/배열) 로드 후 정렬, 복합 필터, 기준점 거리 계산,
-                고급 규칙 필터를 지원합니다.
-              </CardDescription>
+    <div data-ui="div-006" className="min-h-screen bg-[radial-gradient(circle_at_0%_0%,rgba(15,118,110,0.14),transparent_42%),radial-gradient(circle_at_100%_0%,rgba(59,130,246,0.14),transparent_40%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] p-3 md:p-5 xl:h-dvh xl:overflow-hidden">
+      <div data-ui="div-007" className="mx-auto flex w-full max-w-[1600px] flex-col gap-3 xl:h-full xl:min-h-0">
+        <div data-ui="div-018" className="grid gap-3 xl:min-h-0 xl:flex-1 xl:grid-cols-[430px_minmax(0,1fr)]">
+          <Card data-ui="card-019" className="border-slate-200/80 shadow-xl shadow-slate-900/5 xl:flex xl:h-full xl:min-h-0 xl:flex-col">
+            <CardHeader data-ui="card-019-header" className="space-y-2 px-4 pb-3 pt-4 md:px-5 md:pt-5">
+              <CardTitle data-ui="card-019-title" className="text-xl font-semibold">Place Datagrid</CardTitle>
             </CardHeader>
-          </Card>
-        </div>
-
-        <div data-ui="div-018" className="grid gap-3 xl:grid-cols-[430px_minmax(0,1fr)]">
-          <Card data-ui="card-019" className="border-slate-200/80 shadow-xl shadow-slate-900/5">
-            <CardContent data-ui="card-content-020" className="p-4">
-              <ScrollArea data-ui="scroll-area-021" className="h-[min(72vh,860px)] pr-3">
+            <CardContent data-ui="card-content-020" className="px-4 pb-4 pt-0 md:px-5 md:pb-5 xl:flex xl:min-h-0 xl:flex-1">
+              <ScrollArea data-ui="scroll-area-021" className="h-[min(72vh,860px)] pr-2 xl:h-full">
                 <div data-ui="div-022" className="space-y-4">
                   <div data-ui="div-023" className="space-y-2">
                     <label data-ui="label-024" className="text-xs font-semibold text-muted-foreground" htmlFor="fileInput">JSON 파일</label>
@@ -1685,8 +1676,8 @@ function App() {
             </CardContent>
           </Card>
 
-          <Card data-ui="card-140" className="border-slate-200/80 shadow-xl shadow-slate-900/5">
-            <CardHeader data-ui="card-header-141" className="space-y-3">
+          <Card data-ui="card-140" className="border-slate-200/80 shadow-xl shadow-slate-900/5 xl:flex xl:h-full xl:min-h-0 xl:flex-col">
+            <CardHeader data-ui="card-header-141" className="space-y-2 px-4 pb-3 pt-4 md:px-5 md:pt-5">
               <div data-ui="div-142" id="status" className="space-y-2">
                 {statusError ? (
                   <div data-ui="div-143" className="text-sm font-medium text-red-600">{statusError}</div>
@@ -1708,9 +1699,9 @@ function App() {
                 )}
               </div>
             </CardHeader>
-            <CardContent data-ui="card-content-149" className="pb-4">
-              <ScrollArea data-ui="scroll-area-150" className="h-[min(72vh,860px)] rounded-md border bg-background md:hidden">
-                <div data-ui="div-151" className="space-y-2 p-2">
+            <CardContent data-ui="card-content-149" className="px-4 pb-4 pt-0 md:px-5 md:pb-5 xl:flex xl:min-h-0 xl:flex-1 xl:flex-col">
+              <ScrollArea data-ui="scroll-area-150" className="h-[min(72vh,860px)] rounded-lg border bg-background md:hidden xl:h-full">
+                <div data-ui="div-151" className="space-y-3 p-3">
                   {!table.getRowModel().rows.length ? (
                     <div data-ui="div-152" className="py-8 text-center text-sm text-muted-foreground">
                       데이터가 없습니다. 파일을 불러오거나 필터를 완화해 주세요.
@@ -1756,7 +1747,7 @@ function App() {
                 </div>
               </ScrollArea>
 
-              <ScrollArea data-ui="scroll-area-172" className="hidden h-[min(72vh,860px)] rounded-md border bg-background md:block">
+              <ScrollArea data-ui="scroll-area-172" className="hidden h-[min(72vh,860px)] rounded-lg border bg-background md:block xl:h-full">
                 <div data-ui="div-173" className="min-w-[760px]">
                   <Table data-ui="table-174">
                     <TableHeader data-ui="table-header-175" id="head" className="sticky top-0 z-10 bg-muted/70 backdrop-blur supports-[backdrop-filter]:bg-muted/70">
