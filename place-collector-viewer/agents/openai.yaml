@@ -1,0 +1,4 @@
+interface:
+  display_name: "Place Collector Viewer"
+  short_description: "Collect Naver places, then auto-open/import in grid."
+  default_prompt: "Use $place-collector-viewer to collect Naver places, export JSON, and automatically open the viewer and import the file."

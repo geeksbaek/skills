@@ -1,0 +1,2559 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Place JSON 데이터그리드 뷰어</title>
+  <style>
+    @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css");
+
+    :root {
+      --background: 0 0% 100%;
+      --foreground: 222.2 84% 4.9%;
+      --card: 0 0% 100%;
+      --card-foreground: 222.2 84% 4.9%;
+      --popover: 0 0% 100%;
+      --popover-foreground: 222.2 84% 4.9%;
+      --primary: 221.2 83.2% 53.3%;
+      --primary-foreground: 210 40% 98%;
+      --secondary: 210 40% 96.1%;
+      --secondary-foreground: 222.2 47.4% 11.2%;
+      --muted: 210 40% 96.1%;
+      --muted-foreground: 215.4 16.3% 46.9%;
+      --accent: 213 93% 94%;
+      --accent-foreground: 222.2 47.4% 11.2%;
+      --destructive: 0 84.2% 60.2%;
+      --destructive-foreground: 210 40% 98%;
+      --border: 214.3 31.8% 91.4%;
+      --input: 214.3 31.8% 91.4%;
+      --ring: 221.2 83.2% 53.3%;
+      --radius: 0.92rem;
+      --ok: 141 72% 28%;
+      --warn: 0 72% 48%;
+      --shadow-soft: 0 18px 40px -26px rgb(15 23 42 / 0.42);
+      --shadow-panel: 0 28px 45px -36px rgb(15 23 42 / 0.38);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Pretendard Variable", "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+      color: hsl(var(--foreground));
+      background:
+        radial-gradient(circle at 12% 12%, hsl(219 96% 84% / 0.3), transparent 40%),
+        radial-gradient(circle at 86% 6%, hsl(212 91% 92% / 0.42), transparent 42%),
+        linear-gradient(180deg, hsl(210 40% 98%), hsl(210 36% 95%));
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(120deg, rgb(255 255 255 / 0.72), transparent 35%, rgb(255 255 255 / 0.4)),
+        radial-gradient(circle at 50% -5%, rgb(255 255 255 / 0.4), transparent 42%);
+    }
+
+    .app {
+      position: relative;
+      z-index: 1;
+      max-width: 1640px;
+      margin: 0 auto;
+      padding: clamp(1rem, 2vw, 2rem) clamp(0.9rem, 2vw, 1.5rem) 1.8rem;
+      animation: rise 420ms ease;
+    }
+
+    @keyframes rise {
+      from {
+        transform: translateY(8px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+      gap: 0.85rem;
+      margin-bottom: 0.85rem;
+    }
+
+    .title-card,
+    .guide-card,
+    .panel {
+      border-radius: calc(var(--radius) + 0.22rem);
+      border: 1px solid hsl(var(--border));
+      background: hsl(var(--card) / 0.88);
+      box-shadow: var(--shadow-panel);
+      backdrop-filter: blur(12px) saturate(170%);
+    }
+
+    .title-card {
+      padding: 1.15rem 1.2rem;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.75rem, 2.8vw, 2.85rem);
+      line-height: 1.08;
+      letter-spacing: -0.03em;
+      font-weight: 740;
+    }
+
+    .subtitle {
+      margin-top: 0.62rem;
+      color: hsl(var(--muted-foreground));
+      font-size: 0.9rem;
+      line-height: 1.54;
+      letter-spacing: -0.01em;
+    }
+
+    .guide-card {
+      padding: 0.78rem;
+      display: grid;
+      gap: 0.45rem;
+      align-content: center;
+      background:
+        linear-gradient(140deg, hsl(213 95% 96%), hsl(0 0% 100% / 0.92)),
+        hsl(var(--card));
+    }
+
+    .guide-row {
+      border-radius: calc(var(--radius) - 0.25rem);
+      border: 1px solid hsl(var(--border));
+      padding: 0.56rem 0.68rem;
+      font-size: 0.79rem;
+      line-height: 1.42;
+      color: hsl(var(--card-foreground) / 0.88);
+      background: hsl(var(--background) / 0.92);
+    }
+
+    .guide-row b {
+      color: hsl(var(--foreground));
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(320px, 430px) minmax(0, 1fr);
+      gap: 0.85rem;
+      align-items: stretch;
+      height: clamp(560px, calc(100vh - 210px), 900px);
+    }
+
+    .sidebar {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+    }
+
+    .panel {
+      padding: 0.85rem;
+    }
+
+    .filter-panel {
+      width: 100%;
+      margin-top: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+      overflow: auto;
+      min-height: 0;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 0.68rem;
+      align-items: start;
+    }
+
+    .control {
+      grid-column: span 6;
+      display: grid;
+      gap: 0.42rem;
+      min-width: 0;
+    }
+
+    .control.compact {
+      grid-column: span 3;
+    }
+
+    .control label {
+      display: block;
+      margin: 0;
+      font-size: 0.74rem;
+      line-height: 1.35;
+      letter-spacing: 0.01em;
+      font-weight: 620;
+      color: hsl(var(--muted-foreground));
+    }
+
+    .helper-text {
+      margin: -0.08rem 0 0;
+      font-size: 0.72rem;
+      color: hsl(var(--muted-foreground));
+      line-height: 1.35;
+    }
+
+    .control-spacer {
+      display: block;
+      height: 1.5rem;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="file"],
+    select {
+      width: 100%;
+      min-height: 2.6rem;
+      border-radius: calc(var(--radius) - 0.2rem);
+      border: 1px solid hsl(var(--input));
+      background: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font: 500 0.9rem/1.2 "Pretendard Variable", "Pretendard", "Noto Sans KR", sans-serif;
+      padding: 0 0.78rem;
+      outline: none;
+      transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+    }
+
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    input[type="file"]:focus,
+    select:focus {
+      border-color: hsl(var(--ring));
+      box-shadow: 0 0 0 3px hsl(var(--ring) / 0.2);
+    }
+
+    input[type="number"] {
+      appearance: textfield;
+    }
+
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    input[type="file"] {
+      padding: 0;
+      font-size: 0.82rem;
+      line-height: 2.5rem;
+    }
+
+    input[type="file"]::file-selector-button {
+      height: 100%;
+      border: 0;
+      border-right: 1px solid hsl(var(--border));
+      background: hsl(var(--secondary));
+      color: hsl(var(--secondary-foreground));
+      font: 600 0.77rem/1 "Pretendard Variable", "Pretendard", sans-serif;
+      padding: 0 0.74rem;
+      cursor: pointer;
+      margin-right: 0.5rem;
+    }
+
+    select {
+      appearance: none;
+      padding-right: 2.2rem;
+      background:
+        linear-gradient(45deg, transparent 50%, hsl(var(--muted-foreground)) 50%),
+        linear-gradient(135deg, hsl(var(--muted-foreground)) 50%, transparent 50%),
+        linear-gradient(to right, hsl(var(--border)), hsl(var(--border))),
+        hsl(var(--background));
+      background-size: 5px 5px, 5px 5px, 1px 58%, auto;
+      background-position: calc(100% - 15px) 52%, calc(100% - 10px) 52%, calc(100% - 31px) 50%, 0 0;
+      background-repeat: no-repeat;
+    }
+
+    .picker-wrap {
+      width: 100%;
+      border-radius: calc(var(--radius) - 0.2rem);
+      border: 1px solid hsl(var(--input));
+      background: hsl(var(--background));
+      min-height: 2.6rem;
+      display: flex;
+      align-items: center;
+      transition: border-color 150ms ease, box-shadow 150ms ease;
+    }
+
+    .picker-wrap:focus-within {
+      border-color: hsl(var(--ring));
+      box-shadow: 0 0 0 3px hsl(var(--ring) / 0.2);
+    }
+
+    .picker-wrap input[type="date"],
+    .picker-wrap input[type="time"] {
+      border: 0;
+      background: transparent;
+      min-height: 2.45rem;
+      padding-inline: 0.78rem;
+      color: hsl(var(--foreground));
+      width: 100%;
+      font: 500 0.9rem/1 "Pretendard Variable", "Pretendard", sans-serif;
+      font-variant-numeric: tabular-nums;
+      outline: none;
+    }
+
+    .btn {
+      min-height: 2.6rem;
+      border-radius: calc(var(--radius) - 0.2rem);
+      border: 1px solid hsl(var(--primary));
+      background: hsl(var(--primary));
+      color: hsl(var(--primary-foreground));
+      font: 620 0.78rem/1 "Pretendard Variable", "Pretendard", sans-serif;
+      letter-spacing: 0.01em;
+      padding: 0 0.92rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      background: hsl(var(--primary) / 0.92);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn:disabled {
+      opacity: 0.56;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .btn.alt {
+      background: hsl(var(--secondary));
+      color: hsl(var(--secondary-foreground));
+      border-color: hsl(var(--border));
+      box-shadow: none;
+    }
+
+    .btn.slim {
+      min-height: 2.4rem;
+      padding-inline: 0.76rem;
+      font-size: 0.74rem;
+    }
+
+    .controls .control .btn {
+      width: 100%;
+    }
+
+    .center-search-row {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .center-search-row input {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .controls .control .center-search-row .btn {
+      flex: 0 0 auto;
+      width: auto;
+      min-width: 5rem;
+    }
+
+    .center-options {
+      margin-top: 0.42rem;
+      padding: 0.44rem;
+      border-radius: calc(var(--radius) - 0.1rem);
+      border: 1px solid hsl(var(--border));
+      background: hsl(var(--popover));
+      display: grid;
+      gap: 0.36rem;
+      max-height: 230px;
+      overflow: auto;
+      box-shadow: 0 20px 45px -40px rgb(15 23 42 / 0.65);
+    }
+
+    .center-options[hidden] {
+      display: none;
+    }
+
+    .center-option {
+      border: 1px solid transparent;
+      border-radius: calc(var(--radius) - 0.25rem);
+      background: hsl(var(--background));
+      color: hsl(var(--popover-foreground));
+      text-align: left;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.52rem;
+      padding: 0.52rem 0.58rem;
+      cursor: pointer;
+      font: 500 0.78rem/1.35 "Pretendard Variable", "Pretendard", sans-serif;
+      transition: border-color 120ms ease, background-color 120ms ease;
+    }
+
+    .center-option:hover {
+      border-color: hsl(var(--border));
+      background: hsl(var(--accent));
+    }
+
+    .center-option.active {
+      border-color: hsl(var(--ring) / 0.55);
+      background: hsl(var(--accent));
+      box-shadow: inset 0 0 0 1px hsl(var(--ring) / 0.22);
+    }
+
+    .center-option-index {
+      flex: 0 0 auto;
+      font-family: "IBM Plex Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.72rem;
+      color: hsl(var(--muted-foreground));
+      padding-top: 0.03rem;
+    }
+
+    .center-option-label {
+      min-width: 0;
+      line-height: 1.4;
+      word-break: keep-all;
+      overflow-wrap: anywhere;
+    }
+
+    .center-search-status {
+      margin-top: 0.42rem;
+      font-size: 0.74rem;
+      line-height: 1.35;
+      color: hsl(var(--muted-foreground));
+    }
+
+    .center-search-status[data-tone="ok"] {
+      color: hsl(var(--ok));
+    }
+
+    .center-search-status[data-tone="warn"] {
+      color: hsl(var(--warn));
+    }
+
+    .preset-chip-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .preset-chip {
+      border: 1px solid hsl(var(--border));
+      border-radius: 999px;
+      background: hsl(var(--secondary));
+      color: hsl(var(--secondary-foreground));
+      font: 560 0.75rem/1 "Pretendard Variable", "Pretendard", sans-serif;
+      padding: 0.5rem 0.68rem;
+      cursor: pointer;
+      transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+      white-space: nowrap;
+    }
+
+    .preset-chip:hover {
+      border-color: hsl(var(--ring) / 0.42);
+    }
+
+    .preset-chip.active {
+      border-color: hsl(var(--primary));
+      background: hsl(var(--primary));
+      color: hsl(var(--primary-foreground));
+      box-shadow: 0 8px 26px -16px hsl(var(--primary));
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.46rem;
+      margin-top: 0.05rem;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      border-radius: 999px;
+      border: 1px solid hsl(var(--border));
+      background: hsl(var(--secondary));
+      color: hsl(var(--secondary-foreground));
+      padding: 0.38rem 0.68rem;
+      font-size: 0.73rem;
+      line-height: 1.1;
+    }
+
+    .chip button {
+      border: 0;
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      color: hsl(var(--destructive));
+      cursor: pointer;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .advanced-wrap {
+      border: 1px solid hsl(var(--border));
+      border-radius: calc(var(--radius) + 0.05rem);
+      padding: 0.72rem;
+      background: hsl(var(--muted) / 0.46);
+      display: grid;
+      gap: 0.62rem;
+    }
+
+    .advanced-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.62rem;
+    }
+
+    .advanced-title {
+      font-size: 0.96rem;
+      line-height: 1.2;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: hsl(var(--foreground));
+    }
+
+    .advanced-desc {
+      margin-top: 0.18rem;
+      color: hsl(var(--muted-foreground));
+      font-size: 0.74rem;
+      line-height: 1.4;
+    }
+
+    .advanced-actions {
+      display: flex;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      gap: 0.46rem;
+    }
+
+    .advanced-actions .control {
+      grid-column: auto;
+    }
+
+    .rule-list {
+      display: grid;
+      gap: 0.48rem;
+    }
+
+    .rule-row {
+      display: grid;
+      grid-template-columns: minmax(170px, 1.2fr) 138px minmax(120px, 1fr) minmax(120px, 1fr) auto;
+      gap: 0.44rem;
+      align-items: center;
+      border: 1px solid hsl(var(--border));
+      border-radius: calc(var(--radius) - 0.18rem);
+      padding: 0.42rem;
+      background: hsl(var(--background));
+    }
+
+    .rule-placeholder {
+      border: 1px dashed hsl(var(--border));
+      border-radius: calc(var(--radius) - 0.18rem);
+      padding: 0.64rem;
+      color: hsl(var(--muted-foreground));
+      font-size: 0.74rem;
+      background: hsl(var(--background) / 0.72);
+    }
+
+    .facility-chip {
+      border: 1px solid hsl(var(--border));
+      border-radius: 999px;
+      background: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font: 560 0.75rem/1 "Pretendard Variable", "Pretendard", sans-serif;
+      padding: 0.52rem 0.68rem;
+      cursor: pointer;
+      transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+    }
+
+    .facility-chip:hover {
+      border-color: hsl(var(--ring) / 0.4);
+    }
+
+    .facility-chip.active {
+      border-color: hsl(var(--primary));
+      background: hsl(var(--primary));
+      color: hsl(var(--primary-foreground));
+    }
+
+    .data-panel {
+      margin-top: 0;
+      min-width: 0;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      gap: 0.56rem;
+    }
+
+    .status {
+      margin: 0;
+      font-size: 0.8rem;
+      line-height: 1.4;
+      color: hsl(var(--muted-foreground));
+    }
+
+    .status strong {
+      color: hsl(var(--foreground));
+    }
+
+    .table-shell {
+      border: 1px solid hsl(var(--border));
+      border-radius: calc(var(--radius) + 0.1rem);
+      background: hsl(var(--background));
+      overflow: hidden;
+      min-height: 0;
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .table-scroll {
+      overflow: auto;
+      min-height: 0;
+      max-height: 100%;
+      height: 100%;
+    }
+
+    table {
+      width: max-content;
+      min-width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 0.79rem;
+      table-layout: auto;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 4;
+      background: hsl(var(--muted) / 0.92);
+      border-bottom: 1px solid hsl(var(--border));
+      text-align: left;
+      padding: 0;
+    }
+
+    thead th:first-child,
+    thead th:first-child button {
+      border-top-left-radius: calc(var(--radius) + 0.08rem);
+    }
+
+    thead th:last-child,
+    thead th:last-child button {
+      border-top-right-radius: calc(var(--radius) + 0.08rem);
+    }
+
+    th button {
+      border: 0;
+      background: transparent;
+      color: hsl(var(--secondary-foreground));
+      width: 100%;
+      padding: 0.66rem 0.58rem;
+      text-align: left;
+      font: 620 0.76rem/1.22 "Pretendard Variable", "Pretendard", sans-serif;
+      display: flex;
+      align-items: center;
+      gap: 0.42rem;
+      cursor: pointer;
+      transition: background-color 120ms ease;
+    }
+
+    th button:hover {
+      background: hsl(var(--accent));
+    }
+
+    .sort-mark {
+      font-size: 0.62rem;
+      line-height: 1;
+      border-radius: 999px;
+      border: 1px solid hsl(var(--primary) / 0.4);
+      color: hsl(var(--primary));
+      padding: 0.15rem 0.3rem;
+      min-width: 1.5rem;
+      text-align: center;
+      font-weight: 700;
+    }
+
+    tbody td {
+      border-bottom: 1px solid hsl(var(--border));
+      padding: 0.52rem 0.58rem;
+      color: hsl(var(--foreground) / 0.92);
+      white-space: nowrap;
+      background: hsl(var(--background));
+      line-height: 1.44;
+      vertical-align: top;
+    }
+
+    tbody tr:nth-child(2n) td {
+      background: hsl(var(--muted) / 0.26);
+    }
+
+    tbody tr:hover td {
+      background: hsl(var(--accent) / 0.55);
+    }
+
+    .mono {
+      font-family: "IBM Plex Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      white-space: nowrap;
+    }
+
+    .num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .pet-yes,
+    .open-ref-open {
+      color: hsl(var(--ok));
+      font-weight: 700;
+    }
+
+    .pet-no,
+    .open-ref-closed {
+      color: hsl(var(--warn));
+      font-weight: 700;
+    }
+
+    .open-ref-break {
+      color: hsl(31 85% 42%);
+      font-weight: 700;
+    }
+
+    .open-ref-unknown {
+      color: hsl(var(--muted-foreground));
+      font-weight: 600;
+    }
+
+    a.place-link {
+      color: hsl(var(--primary));
+      text-decoration: none;
+      font-weight: 650;
+    }
+
+    a.place-link:hover {
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .empty {
+      text-align: center;
+      color: hsl(var(--muted-foreground));
+      padding: 1.32rem 0.62rem;
+      font-style: italic;
+    }
+
+    @media (max-width: 1380px) {
+      .controls {
+        grid-template-columns: repeat(8, minmax(0, 1fr));
+      }
+
+      .control {
+        grid-column: span 4;
+      }
+
+      .control.compact {
+        grid-column: span 2;
+      }
+    }
+
+    @media (max-width: 1140px) {
+      .workspace {
+        grid-template-columns: 1fr;
+        height: auto;
+      }
+
+      .hero {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar,
+      .filter-panel {
+        min-height: auto;
+        overflow: visible;
+      }
+
+      .data-panel {
+        height: auto;
+      }
+
+      .table-shell {
+        max-height: 68vh;
+      }
+    }
+
+    @media (max-width: 860px) {
+      .app {
+        padding: 0.8rem 0.62rem 1rem;
+      }
+
+      .controls {
+        grid-template-columns: 1fr;
+      }
+
+      .control,
+      .control.compact {
+        grid-column: auto;
+      }
+
+      .center-search-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .controls .control .center-search-row .btn {
+        width: 100%;
+      }
+
+      .advanced-head {
+        align-items: flex-start;
+      }
+
+      .advanced-actions {
+        width: 100%;
+      }
+
+      .advanced-actions .control {
+        width: 100% !important;
+      }
+
+      .advanced-actions .btn {
+        flex: 1 1 calc(50% - 0.23rem);
+      }
+
+      .rule-row {
+        grid-template-columns: 1fr;
+      }
+
+      .table-shell {
+        max-height: 62vh;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="hero">
+      <article class="title-card">
+        <h1>플레이스 데이터그리드</h1>
+        <p class="subtitle">
+          `~/Downloads/dp-강남-2026-02-19.json` 포맷(객체 또는 배열)을 읽어 행 데이터로 정규화합니다.
+          헤더 클릭 정렬, <strong>쉬프트(Shift)+클릭 복합 정렬</strong>, <strong>전 필드 고급 필터</strong>를 지원합니다.
+        </p>
+      </article>
+      <article class="guide-card">
+        <div class="guide-row"><b>단계 1</b> 파일 선택에서 JSON 불러오기</div>
+        <div class="guide-row"><b>단계 2</b> 헤더 클릭으로 정렬, 쉬프트(Shift)+클릭으로 우선순위 추가</div>
+        <div class="guide-row"><b>단계 3</b> 빠른 필터 + 고급 필터 규칙 조합</div>
+      </article>
+    </section>
+
+    <section class="workspace">
+      <aside class="sidebar">
+        <section class="panel filter-panel">
+          <div class="controls">
+            <div class="control">
+              <label for="fileInput">JSON 파일</label>
+              <input id="fileInput" type="file" accept=".json,application/json" />
+            </div>
+            <div class="control">
+              <label for="searchInput">통합 검색</label>
+              <input id="searchInput" type="text" placeholder="예: 파스타, 주차, 광교중앙역" />
+              <p class="helper-text">콤마(,)로 여러 키워드를 입력하면 OR 조건으로 검색합니다.</p>
+            </div>
+            <div class="control">
+              <label for="minReviewsChips">최소 리뷰 수</label>
+              <div id="minReviewsChips" class="preset-chip-group" role="group" aria-label="최소 리뷰 수"></div>
+            </div>
+            <div class="control">
+              <label for="maxDistanceChips">최대 거리(m)</label>
+              <div id="maxDistanceChips" class="preset-chip-group" role="group" aria-label="최대 거리"></div>
+            </div>
+            <div class="control">
+              <label for="centerSearchInput">거리 기준 주소/건물명</label>
+              <div class="center-search-row">
+                <input id="centerSearchInput" type="text" autocomplete="off" placeholder="예: 상현역, 광교호수공원, 앨리웨이광교" />
+                <button id="searchCenterBtn" class="btn alt slim" type="button">검색</button>
+              </div>
+              <div id="centerSearchOptions" class="center-options" role="listbox" aria-label="거리 기준점 옵션" hidden></div>
+              <div id="centerSearchStatus" class="center-search-status">주소/건물명을 검색하고 옵션에서 선택하면 거리를 계산합니다.</div>
+            </div>
+            <div class="control">
+              <label for="refDate">기준 날짜</label>
+              <div class="picker-wrap" data-pill="DATE">
+                <input id="refDate" type="date" />
+              </div>
+            </div>
+            <div class="control">
+              <label for="refTime">기준 시간</label>
+              <div class="picker-wrap" data-pill="TIME">
+                <input id="refTime" type="time" step="60" />
+              </div>
+            </div>
+            <div class="control">
+              <label for="refOpenMode">기준시각 영업 상태</label>
+              <select id="refOpenMode">
+                <option value="all">전체</option>
+                <option value="open">영업중만</option>
+                <option value="break">브레이크타임만</option>
+                <option value="closed">영업종료만</option>
+                <option value="unknown">계산불가/휴무만</option>
+              </select>
+            </div>
+            <div class="control">
+              <label for="topKeywordFilter">최상위 키워드</label>
+              <select id="topKeywordFilter"></select>
+            </div>
+            <div class="control">
+              <span class="control-spacer" aria-hidden="true"></span>
+              <button id="resetBtn" class="btn" type="button">필터 초기화</button>
+            </div>
+          </div>
+
+          <div id="sortChips" class="chips"></div>
+
+          <div class="advanced-wrap">
+            <div class="advanced-head">
+              <div>
+                <div class="advanced-title">편의시설 및 서비스 필터</div>
+                <div class="advanced-desc">옵션/편의시설 정보를 합쳐 필터합니다.</div>
+              </div>
+              <div class="advanced-actions">
+                <div class="control" style="min-width: 160px;">
+                  <label for="convenienceMode">선택 방식</label>
+                  <select id="convenienceMode">
+                    <option value="all">모두 포함</option>
+                    <option value="any">하나 이상 포함</option>
+                  </select>
+                </div>
+                <button id="clearConvenienceBtn" class="btn alt slim" type="button">선택 해제</button>
+              </div>
+            </div>
+            <div id="convenienceChips" class="chips"></div>
+          </div>
+
+          <div class="advanced-wrap">
+            <div class="advanced-head">
+              <div>
+                <div class="advanced-title">고급 필터</div>
+                <div class="advanced-desc">파생 필드 + 원본(raw.*) 필드 전체에 대해 규칙 기반 필터를 추가할 수 있습니다.</div>
+              </div>
+              <div class="advanced-actions">
+                <div class="control" style="min-width: 160px;">
+                  <label for="advMode">규칙 결합</label>
+                  <select id="advMode">
+                    <option value="all">모두 일치</option>
+                    <option value="any">하나 이상 일치</option>
+                  </select>
+                </div>
+                <button id="addRuleBtn" class="btn slim" type="button">규칙 추가</button>
+                <button id="clearRulesBtn" class="btn alt slim" type="button">규칙 전체 삭제</button>
+              </div>
+            </div>
+            <div id="ruleList" class="rule-list"></div>
+          </div>
+        </section>
+      </aside>
+
+      <section class="panel data-panel">
+        <div id="status" class="status"></div>
+        <div class="table-shell">
+          <div class="table-scroll">
+            <table>
+              <thead id="head"></thead>
+              <tbody id="body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script type="module">
+    import { html, nothing, render } from "https://cdn.jsdelivr.net/npm/lit-html@3.2.1/+esm";
+
+    const columns = [
+      { key: "name", label: "장소명", type: "text" },
+      { key: "category", label: "카테고리", type: "text" },
+      { key: "reviewCount", label: "리뷰수", type: "number", className: "num mono" },
+      { key: "distanceM", label: "거리(m)", type: "number", className: "num mono" },
+      { key: "topKeywordPct", label: "최상위 키워드%", type: "number", className: "num mono" },
+      { key: "petFriendly", label: "반려동물", type: "boolean", className: "mono" },
+      { key: "openAtRefRank", label: "기준시점 영업", type: "number", className: "mono" }
+    ];
+
+    const DERIVED_FIELD_META = {
+      id: { label: "아이디", type: "text" },
+      name: { label: "장소명", type: "text" },
+      category: { label: "카테고리", type: "text" },
+      reviewCount: { label: "리뷰수", type: "number" },
+      avgRating: { label: "평점", type: "number" },
+      distanceM: { label: "거리(m)", type: "number" },
+      petFriendly: { label: "반려동물 동반", type: "boolean" },
+      topKeyword: { label: "최상위 키워드", type: "text" },
+      topKeywordCount: { label: "최상위 키워드 수", type: "number" },
+      topKeywordPct: { label: "최상위 키워드 %", type: "number" },
+      openDesc: { label: "영업 상태", type: "text" },
+      openAtRefLabel: { label: "기준시점 영업", type: "text" },
+      openAtRefRank: { label: "기준시점 영업순위", type: "number" },
+      openAtRefCode: { label: "기준시점 영업코드", type: "text" },
+      address: { label: "주소", type: "text" },
+      roadAddress: { label: "도로명 주소", type: "text" },
+      commonAddress: { label: "지번 주소", type: "text" },
+      phone: { label: "전화", type: "text" },
+      options: { label: "옵션", type: "text" },
+      conveniences: { label: "편의시설 목록", type: "text" },
+      conveniencesText: { label: "편의시설 텍스트", type: "text" },
+      priceCategory: { label: "가격대", type: "text" },
+      newOpening: { label: "신규오픈", type: "boolean" },
+      broadcastInfo: { label: "방송 정보", type: "text" },
+      hasBroadcast: { label: "방송 정보 존재", type: "boolean" },
+      parkingDetail: { label: "주차 상세", type: "text" },
+      hasParkingDetail: { label: "주차 상세 존재", type: "boolean" },
+      hasParkingOption: { label: "옵션:주차", type: "boolean" },
+      hasValetOption: { label: "옵션:발렛", type: "boolean" },
+      hasReservationOption: { label: "옵션:예약", type: "boolean" },
+      detailConveniences: { label: "편의정보", type: "text" },
+      regularClosedDays: { label: "정기휴무", type: "text" },
+      saveCount: { label: "저장수", type: "number" },
+      visitorReviewCount: { label: "방문자 리뷰수", type: "number" },
+      visitorReviewScore: { label: "방문자 리뷰점수", type: "number" },
+      blogCafeReviewCount: { label: "블로그/카페 리뷰수", type: "number" },
+      feedsCount: { label: "소식 수", type: "number" },
+      feedsHasMore: { label: "소식 더보기", type: "boolean" },
+      hasFeeds: { label: "소식 존재", type: "boolean" },
+      x: { label: "경도(x)", type: "number" },
+      y: { label: "위도(y)", type: "number" },
+      mapUrl: { label: "지도 링크", type: "text" }
+    };
+
+    const RAW_TO_DERIVED_FIELD = {
+      id: "id",
+      name: "name",
+      category: "category",
+      reviewCount: "reviewCount",
+      avgRating: "avgRating",
+      distance: "distanceM",
+      roadAddress: "roadAddress",
+      commonAddress: "commonAddress",
+      detailPhone: "phone",
+      options: "options",
+      priceCategory: "priceCategory",
+      newOpening: "newOpening",
+      broadcastInfo: "broadcastInfo",
+      parkingDetail: "parkingDetail",
+      detailConveniences: "detailConveniences",
+      regularClosedDays: "regularClosedDays",
+      saveCount: "saveCount",
+      visitorReviewCount: "visitorReviewCount",
+      visitorReviewScore: "visitorReviewScore",
+      blogCafeReviewCount: "blogCafeReviewCount",
+      feedsHasMore: "feedsHasMore",
+      x: "x",
+      y: "y",
+      mapUrl: "mapUrl"
+    };
+
+    const RAW_FIELD_LABELS = {
+      detailCid: "상세 식별자",
+      detailHours: "영업시간 상세",
+      details: "세부 정보",
+      detailStatus: "상태 상세",
+      feeds: "소식 목록",
+      isNx: "확장 수집 여부",
+      keywords: "키워드 목록",
+      microReview: "마이크로 리뷰",
+      newBusinessHours: "신규 영업시간"
+    };
+
+    const OPS_BY_TYPE = {
+      text: [
+        { value: "contains", label: "포함" },
+        { value: "not_contains", label: "미포함" },
+        { value: "eq", label: "=" },
+        { value: "neq", label: "!=" },
+        { value: "starts_with", label: "시작 일치" },
+        { value: "ends_with", label: "끝 일치" },
+        { value: "is_empty", label: "비어 있음" },
+        { value: "not_empty", label: "비어 있지 않음" }
+      ],
+      number: [
+        { value: "gte", label: ">=" },
+        { value: "gt", label: ">" },
+        { value: "lte", label: "<=" },
+        { value: "lt", label: "<" },
+        { value: "eq", label: "=" },
+        { value: "neq", label: "!=" },
+        { value: "between", label: "범위" },
+        { value: "is_empty", label: "비어 있음" },
+        { value: "not_empty", label: "비어 있지 않음" }
+      ],
+      boolean: [
+        { value: "is_true", label: "참" },
+        { value: "is_false", label: "거짓" }
+      ]
+    };
+
+    const MIN_REVIEW_PRESETS = [
+      { label: "0+", value: 0 },
+      { label: "10+", value: 10 },
+      { label: "30+", value: 30 },
+      { label: "50+", value: 50 },
+      { label: "100+", value: 100 },
+      { label: "300+", value: 300 }
+    ];
+
+    const MAX_DISTANCE_PRESETS = [
+      { label: "제한 없음", value: null },
+      { label: "300m", value: 300 },
+      { label: "500m", value: 500 },
+      { label: "1km", value: 1000 },
+      { label: "2km", value: 2000 },
+      { label: "5km", value: 5000 }
+    ];
+
+    const DEFAULT_MIN_REVIEW = 50;
+    const DEFAULT_MAX_DISTANCE = null;
+
+    const state = {
+      rows: [],
+      viewRows: [],
+      sort: [],
+      convenienceCatalog: [],
+      selectedConveniences: [],
+      topKeywordCatalog: [],
+      filterFields: [],
+      filterFieldMap: new Map(),
+      advancedRules: [],
+      nextRuleId: 1,
+      distanceCenter: null,
+      distanceCenterSource: "unset",
+      selectedCenterSearchResultId: null,
+      centerSearchResults: [],
+      centerSearchSeq: 0,
+      centerSearchLoading: false,
+      minReviewPreset: DEFAULT_MIN_REVIEW,
+      maxDistancePreset: DEFAULT_MAX_DISTANCE
+    };
+
+    const CENTER_SEARCH_ENDPOINT = "https://nominatim.openstreetmap.org/search";
+    const CENTER_SEARCH_FALLBACK_ENDPOINT = "https://photon.komoot.io/api/";
+    const CENTER_SEARCH_LIMIT = 8;
+
+    const ui = {
+      fileInput: document.getElementById("fileInput"),
+      searchInput: document.getElementById("searchInput"),
+      minReviewsChips: document.getElementById("minReviewsChips"),
+      maxDistanceChips: document.getElementById("maxDistanceChips"),
+      centerSearchInput: document.getElementById("centerSearchInput"),
+      centerSearchOptions: document.getElementById("centerSearchOptions"),
+      searchCenterBtn: document.getElementById("searchCenterBtn"),
+      centerSearchStatus: document.getElementById("centerSearchStatus"),
+      refDate: document.getElementById("refDate"),
+      refTime: document.getElementById("refTime"),
+      refOpenMode: document.getElementById("refOpenMode"),
+      topKeywordFilter: document.getElementById("topKeywordFilter"),
+      resetBtn: document.getElementById("resetBtn"),
+      status: document.getElementById("status"),
+      sortChips: document.getElementById("sortChips"),
+      convenienceMode: document.getElementById("convenienceMode"),
+      clearConvenienceBtn: document.getElementById("clearConvenienceBtn"),
+      convenienceChips: document.getElementById("convenienceChips"),
+      advMode: document.getElementById("advMode"),
+      addRuleBtn: document.getElementById("addRuleBtn"),
+      clearRulesBtn: document.getElementById("clearRulesBtn"),
+      ruleList: document.getElementById("ruleList"),
+      head: document.getElementById("head"),
+      body: document.getElementById("body")
+    };
+
+    const numFmt = new Intl.NumberFormat("ko-KR");
+
+    function toNumOrNull(value) {
+      if (value === null || value === undefined) return null;
+      if (typeof value === "number") return Number.isFinite(value) ? value : null;
+      if (typeof value === "string") {
+        const cleaned = value.trim().replace(/,/g, "");
+        if (cleaned === "") return null;
+        const parsed = Number(cleaned);
+        return Number.isFinite(parsed) ? parsed : null;
+      }
+      return null;
+    }
+
+    function toNum(value) {
+      return toNumOrNull(value) ?? 0;
+    }
+
+    function toText(value) {
+      if (value === null || value === undefined) return "";
+      if (typeof value === "string") return value;
+      if (typeof value === "number" || typeof value === "boolean") return String(value);
+      if (Array.isArray(value)) return value.map((v) => toText(v)).join(", ");
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return String(value);
+      }
+    }
+
+    function parseSearchKeywords(inputValue) {
+      return toText(inputValue)
+        .split(",")
+        .map((token) => token.trim().toLowerCase())
+        .filter(Boolean);
+    }
+
+    function renderPresetChipGroup(target, presets, currentValue, onSelect) {
+      render(
+        html`${presets.map((preset) => {
+          const isActive = preset.value === currentValue;
+          return html`
+            <button
+              type="button"
+              class=${isActive ? "preset-chip active" : "preset-chip"}
+              @click=${() => onSelect(preset.value)}
+            >
+              ${preset.label}
+            </button>
+          `;
+        })}`,
+        target
+      );
+    }
+
+    function renderPresetFilters() {
+      renderPresetChipGroup(ui.minReviewsChips, MIN_REVIEW_PRESETS, state.minReviewPreset, (value) => {
+        if (state.minReviewPreset === value) return;
+        state.minReviewPreset = value;
+        renderPresetFilters();
+        applyView();
+      });
+
+      renderPresetChipGroup(ui.maxDistanceChips, MAX_DISTANCE_PRESETS, state.maxDistancePreset, (value) => {
+        if (state.maxDistancePreset === value) return;
+        state.maxDistancePreset = value;
+        renderPresetFilters();
+        applyView();
+      });
+    }
+
+    function parseDistanceMeters(distance) {
+      if (!distance) return null;
+      if (typeof distance === "number") return Math.round(distance);
+      const text = String(distance).trim().toLowerCase();
+      if (text.endsWith("km")) return Math.round(toNum(text.replace("km", "")) * 1000);
+      if (text.endsWith("m")) return Math.round(toNum(text.replace("m", "")));
+      const n = toNumOrNull(text);
+      return n == null ? null : Math.round(n);
+    }
+
+    function normalizeConvenienceLabel(text) {
+      const normalized = toText(text).replace(/\s+/g, " ").trim();
+      if (!normalized) return "";
+      if (normalized.includes("�")) return "";
+      return normalized;
+    }
+
+    function extractConveniences(optionsValue, detailConveniencesValue) {
+      const items = [];
+      const push = (value) => {
+        const normalized = normalizeConvenienceLabel(value);
+        if (normalized) items.push(normalized);
+      };
+
+      if (typeof optionsValue === "string") {
+        optionsValue.split(",").forEach(push);
+      } else if (Array.isArray(optionsValue)) {
+        optionsValue.forEach(push);
+      }
+
+      if (Array.isArray(detailConveniencesValue)) {
+        detailConveniencesValue.forEach(push);
+      } else if (typeof detailConveniencesValue === "string") {
+        detailConveniencesValue.split(",").forEach(push);
+      }
+
+      return [...new Set(items)];
+    }
+
+    function distanceFromXYMeters(x, y, centerX, centerY) {
+      const px = toNumOrNull(x);
+      const py = toNumOrNull(y);
+      const cx = toNumOrNull(centerX);
+      const cy = toNumOrNull(centerY);
+      if (px == null || py == null || cx == null || cy == null) return null;
+      const dx = (px - centerX) * 88000;
+      const dy = (py - centerY) * 111000;
+      return Math.round(Math.sqrt(dx * dx + dy * dy));
+    }
+
+    function setDistanceCenter(center) {
+      if (!center) return false;
+      const x = toNumOrNull(center.x);
+      const y = toNumOrNull(center.y);
+      if (x == null || y == null) return false;
+
+      state.distanceCenter = { x, y };
+      state.distanceCenterSource = "search";
+      return true;
+    }
+
+    function clearDistanceCenter() {
+      state.distanceCenter = null;
+      state.distanceCenterSource = "unset";
+      state.selectedCenterSearchResultId = null;
+    }
+
+    function getDistanceCenter() {
+      const x = toNumOrNull(state.distanceCenter?.x);
+      const y = toNumOrNull(state.distanceCenter?.y);
+      if (x != null && y != null) return { x, y, source: "search" };
+      return null;
+    }
+
+    function setCenterSearchStatus(message, tone = "muted") {
+      ui.centerSearchStatus.textContent = message;
+      if (tone === "ok" || tone === "warn") {
+        ui.centerSearchStatus.dataset.tone = tone;
+      } else {
+        delete ui.centerSearchStatus.dataset.tone;
+      }
+    }
+
+    function setCenterSearchLoading(isLoading) {
+      state.centerSearchLoading = Boolean(isLoading);
+      ui.searchCenterBtn.disabled = state.centerSearchLoading;
+      ui.searchCenterBtn.textContent = state.centerSearchLoading ? "검색중..." : "검색";
+    }
+
+    function normalizeCenterSearchResult(item, index) {
+      const x = toNumOrNull(item?.lon ?? item?.x);
+      const y = toNumOrNull(item?.lat ?? item?.y);
+      if (x == null || y == null) return null;
+
+      const label = toText(item?.display_name || item?.name || "").replace(/\s+/g, " ").trim();
+      return {
+        id: `${index}:${x.toFixed(7)}:${y.toFixed(7)}`,
+        x,
+        y,
+        label: label || `${y.toFixed(7)}, ${x.toFixed(7)}`
+      };
+    }
+
+    function toCenterSearchOptionText(item, index) {
+      return `${index + 1}. ${item.label}`;
+    }
+
+    function renderCenterSearchResults() {
+      if (!state.centerSearchResults.length) {
+        ui.centerSearchOptions.hidden = true;
+        render(nothing, ui.centerSearchOptions);
+        return;
+      }
+
+      ui.centerSearchOptions.hidden = false;
+      render(
+        html`${state.centerSearchResults.map((item, index) => {
+          const optionText = toCenterSearchOptionText(item, index);
+          const isActive = state.selectedCenterSearchResultId === item.id;
+          return html`
+            <button
+              type="button"
+              role="option"
+              aria-selected=${isActive ? "true" : "false"}
+              class=${isActive ? "center-option active" : "center-option"}
+              @click=${() => {
+                ui.centerSearchInput.value = optionText;
+                applyCenterSearchResultById(item.id);
+              }}
+            >
+              <span class="center-option-index">${index + 1}</span>
+              <span class="center-option-label">${item.label}</span>
+            </button>
+          `;
+        })}`,
+        ui.centerSearchOptions
+      );
+    }
+
+    function getCenterSearchResultIdFromInputValue() {
+      const inputValue = ui.centerSearchInput.value.trim();
+      if (!inputValue) return null;
+
+      const indexMatched = inputValue.match(/^(\d+)\.\s*/);
+      if (indexMatched) {
+        const index = Number(indexMatched[1]) - 1;
+        if (Number.isInteger(index) && index >= 0 && index < state.centerSearchResults.length) {
+          return state.centerSearchResults[index].id;
+        }
+      }
+
+      const labelOnly = inputValue.replace(/^\d+\.\s*/, "").trim();
+      if (!labelOnly) return null;
+
+      const exact = state.centerSearchResults.find((item) => item.label === labelOnly);
+      if (exact) return exact.id;
+
+      const lowerLabel = labelOnly.toLowerCase();
+      const partial = state.centerSearchResults.find((item) => item.label.toLowerCase().includes(lowerLabel));
+      return partial ? partial.id : null;
+    }
+
+    function applyCenterSearchResultFromInput({ silentStatus = false } = {}) {
+      const resultId = getCenterSearchResultIdFromInputValue();
+      if (!resultId) return false;
+
+      const applied = applyCenterSearchResultById(resultId, { silentStatus });
+      if (!applied) return false;
+
+      const index = state.centerSearchResults.findIndex((item) => item.id === resultId);
+      if (index >= 0) {
+        ui.centerSearchInput.value = toCenterSearchOptionText(state.centerSearchResults[index], index);
+      }
+      return true;
+    }
+
+    function applyCenterSearchResultById(resultId, { silentStatus = false } = {}) {
+      const selected = state.centerSearchResults.find((item) => item.id === resultId);
+      if (!selected) return false;
+
+      setDistanceCenter({ x: selected.x, y: selected.y });
+      state.selectedCenterSearchResultId = resultId;
+      renderCenterSearchResults();
+      if (!silentStatus) {
+        setCenterSearchStatus(`기준점 적용: ${selected.label}`, "ok");
+      }
+      applyView();
+      return true;
+    }
+
+    async function fetchCenterSearchByNominatim(query) {
+      const params = new URLSearchParams({
+        format: "jsonv2",
+        addressdetails: "1",
+        limit: String(CENTER_SEARCH_LIMIT),
+        countrycodes: "kr",
+        "accept-language": "ko",
+        q: query
+      });
+
+      const response = await fetch(`${CENTER_SEARCH_ENDPOINT}?${params.toString()}`, {
+        method: "GET",
+        mode: "cors",
+        cache: "no-store",
+        headers: {
+          Accept: "application/json"
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const payload = await response.json();
+      return Array.isArray(payload) ? payload : [];
+    }
+
+    async function fetchCenterSearchByPhoton(query) {
+      const params = new URLSearchParams({
+        q: query,
+        limit: String(CENTER_SEARCH_LIMIT)
+      });
+
+      const response = await fetch(`${CENTER_SEARCH_FALLBACK_ENDPOINT}?${params.toString()}`, {
+        method: "GET",
+        mode: "cors",
+        cache: "no-store",
+        headers: {
+          Accept: "application/json"
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const payload = await response.json();
+      const features = Array.isArray(payload?.features) ? payload.features : [];
+
+      return features.map((feature) => {
+        const coordinates = Array.isArray(feature?.geometry?.coordinates) ? feature.geometry.coordinates : [];
+        const properties = feature?.properties || {};
+
+        const nameParts = [
+          properties.name,
+          properties.street,
+          properties.district,
+          properties.city,
+          properties.state,
+          properties.country
+        ]
+          .map((v) => toText(v).trim())
+          .filter(Boolean);
+
+        return {
+          lon: coordinates[0],
+          lat: coordinates[1],
+          display_name: nameParts.join(", ")
+        };
+      });
+    }
+
+    async function searchDistanceCenter() {
+      const query = ui.centerSearchInput.value.trim();
+      if (!query) {
+        setCenterSearchStatus("검색어를 입력하세요. 예: 상현역, 광교호수공원", "warn");
+        return;
+      }
+
+      const searchSeq = state.centerSearchSeq + 1;
+      state.centerSearchSeq = searchSeq;
+      setCenterSearchLoading(true);
+      setCenterSearchStatus(`주소 검색 중: ${query}`, "muted");
+
+      try {
+        const providers = [
+          { label: "Photon", fetcher: fetchCenterSearchByPhoton },
+          { label: "Nominatim", fetcher: fetchCenterSearchByNominatim }
+        ];
+
+        let providerLabel = providers[0].label;
+        let payload = [];
+        let lastErrorMessage = "";
+
+        for (const provider of providers) {
+          providerLabel = provider.label;
+          try {
+            payload = await provider.fetcher(query);
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            lastErrorMessage = `${provider.label}: ${message}`;
+            continue;
+          }
+
+          if (searchSeq !== state.centerSearchSeq) return;
+          if (Array.isArray(payload) && payload.length) {
+            break;
+          }
+        }
+
+        state.centerSearchResults = (Array.isArray(payload) ? payload : [])
+          .map((item, index) => normalizeCenterSearchResult(item, index))
+          .filter(Boolean);
+        state.selectedCenterSearchResultId = null;
+
+        renderCenterSearchResults();
+
+        if (!state.centerSearchResults.length) {
+          const suffix = lastErrorMessage ? ` (${lastErrorMessage})` : "";
+          setCenterSearchStatus(`검색 결과가 없습니다. 다른 키워드로 시도하세요.${suffix}`, "warn");
+          return;
+        }
+
+        setCenterSearchStatus(
+          `${state.centerSearchResults.length}건 검색됨 (${providerLabel}) · 아래 옵션에서 장소를 선택하세요.`,
+          "ok"
+        );
+      } catch (error) {
+        if (searchSeq !== state.centerSearchSeq) return;
+        const message = error instanceof Error ? error.message : String(error);
+        setCenterSearchStatus(`주소 검색 실패: ${message}`, "warn");
+      } finally {
+        if (searchSeq === state.centerSearchSeq) {
+          setCenterSearchLoading(false);
+        }
+      }
+    }
+
+    function pad2(n) {
+      return String(n).padStart(2, "0");
+    }
+
+    function toInputDate(date) {
+      return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+    }
+
+    function toInputTime(date) {
+      return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+    }
+
+    function parseTimeToMinutes(text) {
+      if (typeof text !== "string") return null;
+      const m = text.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+      if (!m) return null;
+      const h = Number(m[1]);
+      const mm = Number(m[2]);
+      if (!Number.isFinite(h) || !Number.isFinite(mm)) return null;
+      if (h < 0 || h > 24 || mm < 0 || mm > 59) return null;
+      if (h === 24 && mm !== 0) return null;
+      return h * 60 + mm;
+    }
+
+    function getReferenceDateTime() {
+      const now = new Date();
+      const datePart = ui.refDate.value || toInputDate(now);
+      const m = String(ui.refTime.value || toInputTime(now)).match(/^(\d{1,2}):(\d{2})/);
+      const hh = m ? m[1].padStart(2, "0") : "00";
+      const mm = m ? m[2] : "00";
+      const dt = new Date(`${datePart}T${hh}:${mm}:00`);
+      return Number.isNaN(dt.getTime()) ? now : dt;
+    }
+
+    function getReferenceLabel() {
+      const dt = getReferenceDateTime();
+      return `${toInputDate(dt)} ${toInputTime(dt)}`;
+    }
+
+    function matchDayLabel(dayText, dayKo) {
+      if (typeof dayText !== "string") return false;
+      const t = dayText.trim();
+      if (t === dayKo) return true;
+      if (t === `${dayKo}요일`) return true;
+      if (t.startsWith(`${dayKo}(`)) return true;
+      if (t.startsWith(`${dayKo}요일(`)) return true;
+      return false;
+    }
+
+    function computeReferenceOpenState(row, refDateTime) {
+      const fallback = row.openDesc ? `계산불가 · ${row.openDesc}` : "계산불가";
+      if (!(refDateTime instanceof Date) || Number.isNaN(refDateTime.getTime())) {
+        return { label: fallback, rank: 0, code: "unknown" };
+      }
+
+      const details = row.raw?.detailHours;
+      if (!Array.isArray(details) || !details.length) {
+        return { label: fallback, rank: 0, code: "unknown" };
+      }
+
+      const dayKo = ["일", "월", "화", "수", "목", "금", "토"][refDateTime.getDay()];
+      const byDay =
+        details.find((entry) => entry && matchDayLabel(entry.day, dayKo)) ||
+        details.find((entry) => entry && entry.day === "매일");
+
+      if (!byDay) {
+        return { label: fallback, rank: 0, code: "unknown" };
+      }
+
+      const start = parseTimeToMinutes(byDay.businessHours?.start);
+      const end = parseTimeToMinutes(byDay.businessHours?.end);
+      if (start == null || end == null) {
+        if ((row.openDesc || "").includes("휴무")) {
+          return { label: "휴무", rank: 1, code: "unknown" };
+        }
+        return { label: fallback, rank: 0, code: "unknown" };
+      }
+
+      let now = refDateTime.getHours() * 60 + refDateTime.getMinutes();
+      let s = start;
+      let e = end;
+      const overnight = e <= s;
+      if (overnight) {
+        e += 1440;
+        if (now < s) now += 1440;
+      }
+
+      if (now < s || now >= e) {
+        return { label: "영업종료", rank: 2, code: "closed" };
+      }
+
+      const breaks = Array.isArray(byDay.breakHours) ? byDay.breakHours : [];
+      for (const br of breaks) {
+        const bsRaw = parseTimeToMinutes(br?.start);
+        const beRaw = parseTimeToMinutes(br?.end);
+        if (bsRaw == null || beRaw == null) continue;
+
+        let bs = bsRaw;
+        let be = beRaw;
+        if (be <= bs) be += 1440;
+        if (overnight && bs < s) {
+          bs += 1440;
+          be += 1440;
+        }
+
+        if (now >= bs && now < be) {
+          return { label: "브레이크타임", rank: 4, code: "break" };
+        }
+      }
+
+      return { label: "영업중", rank: 5, code: "open" };
+    }
+
+    function getTopKeyword(details, reviewCount) {
+      if (Array.isArray(details) && details.length) {
+        const topDetail = details
+          .filter((d) => d && typeof d === "object" && typeof d.count === "number")
+          .sort((a, b) => b.count - a.count)[0];
+
+        if (topDetail) {
+          const label = topDetail.displayName || "";
+          const count = topDetail.count;
+          const pct = reviewCount > 0 ? (count / reviewCount) * 100 : 0;
+          return { label, count, pct };
+        }
+      }
+      return { label: "", count: 0, pct: 0 };
+    }
+
+    function normalizeRecord(raw, fallbackId, index) {
+      const reviewCount = toNum(raw.reviewCount);
+      const avgRating = toNum(raw.avgRating);
+      const parsedDistance = parseDistanceMeters(raw.distance);
+      const topKeyword = getTopKeyword(raw.details, reviewCount);
+      const placeId = raw.id || fallbackId || "";
+
+      const options = toText(raw.options);
+      const conveniences = extractConveniences(raw.options, raw.detailConveniences);
+      const parkingDetail = toText(raw.parkingDetail);
+      const detailConveniences = toText(raw.detailConveniences);
+      const regularClosedDays = toText(raw.regularClosedDays);
+      const broadcastInfo = toText(raw.broadcastInfo);
+
+      const feedsCount = Array.isArray(raw.feeds) ? raw.feeds.length : 0;
+      const hasFeeds = feedsCount > 0;
+
+      return {
+        _index: index,
+        raw,
+        id: String(placeId),
+        name: raw.name || "",
+        category: raw.category || "",
+        reviewCount,
+        avgRating,
+        rawDistanceM: parsedDistance,
+        distanceM: parsedDistance,
+        petFriendly: options.includes("반려동물 동반"),
+        topKeyword: topKeyword.label,
+        topKeywordCount: topKeyword.count,
+        topKeywordPct: Number(topKeyword.pct.toFixed(1)),
+        openDesc: raw.detailStatus?.description || raw.newBusinessHours?.description || "",
+        openAtRefLabel: "",
+        openAtRefRank: 0,
+        openAtRefCode: "unknown",
+        address: raw.roadAddress || raw.commonAddress || "",
+        roadAddress: raw.roadAddress || "",
+        commonAddress: raw.commonAddress || "",
+        phone: raw.detailPhone || "",
+        options,
+        conveniences,
+        conveniencesText: conveniences.join(", "),
+        priceCategory: toText(raw.priceCategory),
+        newOpening: Boolean(raw.newOpening),
+        broadcastInfo,
+        hasBroadcast: broadcastInfo.trim() !== "",
+        parkingDetail,
+        hasParkingDetail: parkingDetail.trim() !== "",
+        hasParkingOption: options.includes("주차"),
+        hasValetOption: options.includes("발렛"),
+        hasReservationOption: options.includes("예약"),
+        detailConveniences,
+        regularClosedDays,
+        saveCount: toNum(raw.saveCount),
+        visitorReviewCount: toNum(raw.visitorReviewCount),
+        visitorReviewScore: toNum(raw.visitorReviewScore),
+        blogCafeReviewCount: toNum(raw.blogCafeReviewCount),
+        feedsCount,
+        feedsHasMore: Boolean(raw.feedsHasMore),
+        hasFeeds,
+        x: toNum(raw.x),
+        y: toNum(raw.y),
+        mapUrl: placeId ? `https://map.naver.com/p/smart-around/place/${placeId}` : ""
+      };
+    }
+
+    function parseJsonToRows(payload) {
+      let entries = [];
+      if (Array.isArray(payload)) {
+        entries = payload.map((record, i) => [String(record.id || i), record]);
+      } else if (payload && typeof payload === "object") {
+        entries = Object.entries(payload);
+      } else {
+        throw new Error("JSON 루트는 객체 또는 배열이어야 합니다.");
+      }
+      return entries.map(([id, record], i) => normalizeRecord(record || {}, id, i));
+    }
+
+    function buildConvenienceCatalog(rows) {
+      const counts = new Map();
+      for (const row of rows) {
+        for (const item of row.conveniences || []) {
+          counts.set(item, (counts.get(item) || 0) + 1);
+        }
+      }
+      return [...counts.entries()]
+        .sort((a, b) => (b[1] - a[1]) || a[0].localeCompare(b[0], "ko"))
+        .map(([name, count]) => ({ name, count }));
+    }
+
+    function buildTopKeywordCatalog(rows) {
+      const counts = new Map();
+      for (const row of rows) {
+        const keyword = toText(row.topKeyword).trim();
+        if (!keyword) continue;
+        counts.set(keyword, (counts.get(keyword) || 0) + 1);
+      }
+      return [...counts.entries()]
+        .sort((a, b) => (b[1] - a[1]) || a[0].localeCompare(b[0], "ko"))
+        .map(([keyword, count]) => ({ keyword, count }));
+    }
+
+    function compare(a, b, type) {
+      if (a === null || a === undefined) return b === null || b === undefined ? 0 : 1;
+      if (b === null || b === undefined) return -1;
+      if (type === "number") return Number(a) - Number(b);
+      if (type === "boolean") return Number(a) - Number(b);
+      return String(a).localeCompare(String(b), "ko");
+    }
+
+    function getSortMarker(key) {
+      const idx = state.sort.findIndex((s) => s.key === key);
+      if (idx < 0) return "";
+      const item = state.sort[idx];
+      return `${idx + 1}${item.dir === "asc" ? "▲" : "▼"}`;
+    }
+
+    function sortRows(rows) {
+      const sorted = rows.slice();
+      if (!state.sort.length) {
+        return sorted.sort((a, b) => a._index - b._index);
+      }
+
+      return sorted.sort((a, b) => {
+        for (const rule of state.sort) {
+          const col = columns.find((c) => c.key === rule.key);
+          if (!col) continue;
+          const result = compare(a[col.key], b[col.key], col.type);
+          if (result !== 0) return rule.dir === "asc" ? result : -result;
+        }
+        return a._index - b._index;
+      });
+    }
+
+    function inferTypeFromRows(rows, fieldKey) {
+      const isRaw = fieldKey.startsWith("raw.");
+      if (fieldKey === "raw.id") return "text";
+
+      for (const row of rows) {
+        const value = isRaw ? row.raw?.[fieldKey.slice(4)] : row[fieldKey];
+        if (value === null || value === undefined || value === "") continue;
+
+        if (typeof value === "boolean") return "boolean";
+        if (typeof value === "number") return "number";
+        if (typeof value === "string") {
+          const cleaned = value.trim().replace(/,/g, "");
+          if (/^-?\d+(\.\d+)?$/.test(cleaned)) return "number";
+          return "text";
+        }
+        return "text";
+      }
+
+      return "text";
+    }
+
+    function buildFilterFields(rows) {
+      if (!rows.length) return [];
+
+      const defs = [];
+      const seen = new Set();
+      const derivedKeys = new Set();
+      const first = rows[0];
+
+      function pushField(key, label, type, source) {
+        if (seen.has(key)) return;
+        seen.add(key);
+        defs.push({ key, label, type, source });
+      }
+
+      Object.keys(first)
+        .filter((key) => !["_index", "raw"].includes(key))
+        .forEach((key) => {
+          const meta = DERIVED_FIELD_META[key];
+          const type = meta?.type || inferTypeFromRows(rows, key);
+          const label = meta?.label || key;
+          pushField(key, label, type, "derived");
+          derivedKeys.add(key);
+        });
+
+      const rawKeys = new Set();
+      for (const row of rows) {
+        for (const key of Object.keys(row.raw || {})) rawKeys.add(key);
+      }
+
+      Array.from(rawKeys)
+        .sort((a, b) => a.localeCompare(b, "ko"))
+        .forEach((rawKey) => {
+          const mappedDerivedKey = RAW_TO_DERIVED_FIELD[rawKey] || rawKey;
+          if (derivedKeys.has(mappedDerivedKey)) return;
+          const key = `raw.${rawKey}`;
+          const type = inferTypeFromRows(rows, key);
+          const label = RAW_FIELD_LABELS[rawKey] || rawKey;
+          pushField(key, label, type, "raw");
+        });
+
+      return defs.sort((a, b) => {
+        const labelOrder = a.label.localeCompare(b.label, "ko", { sensitivity: "base", numeric: true });
+        if (labelOrder !== 0) return labelOrder;
+        return a.key.localeCompare(b.key, "ko", { sensitivity: "base", numeric: true });
+      });
+    }
+
+    function getFieldDef(fieldKey) {
+      return state.filterFieldMap.get(fieldKey);
+    }
+
+    function getFieldValue(row, fieldKey) {
+      if (fieldKey.startsWith("raw.")) {
+        return row.raw?.[fieldKey.slice(4)];
+      }
+      return row[fieldKey];
+    }
+
+    function getOpsForType(type) {
+      return OPS_BY_TYPE[type] || OPS_BY_TYPE.text;
+    }
+
+    function getTypeLabel(type) {
+      if (type === "number") return "숫자";
+      if (type === "boolean") return "불리언";
+      return "텍스트";
+    }
+
+    function defaultOpForType(type) {
+      const ops = getOpsForType(type);
+      return ops.length ? ops[0].value : "contains";
+    }
+
+    function opNeedsValue(op) {
+      return !["is_empty", "not_empty", "is_true", "is_false"].includes(op);
+    }
+
+    function opNeedsSecondValue(op) {
+      return op === "between";
+    }
+
+    function isEmptyValue(value) {
+      if (value === null || value === undefined) return true;
+      if (typeof value === "string") return value.trim() === "";
+      if (Array.isArray(value)) return value.length === 0;
+      if (typeof value === "object") return Object.keys(value).length === 0;
+      return false;
+    }
+
+    function evaluateRule(row, rule) {
+      const def = getFieldDef(rule.field);
+      if (!def) return true;
+
+      const leftRaw = getFieldValue(row, rule.field);
+      const op = rule.op;
+
+      if (op === "is_empty") return isEmptyValue(leftRaw);
+      if (op === "not_empty") return !isEmptyValue(leftRaw);
+      if (op === "is_true") return Boolean(leftRaw) === true;
+      if (op === "is_false") return Boolean(leftRaw) === false;
+
+      if (def.type === "number") {
+        const left = toNumOrNull(leftRaw);
+        const right = toNumOrNull(rule.value1);
+        const right2 = toNumOrNull(rule.value2);
+
+        if (left == null) return false;
+
+        if (op === "gt") return right != null && left > right;
+        if (op === "gte") return right != null && left >= right;
+        if (op === "lt") return right != null && left < right;
+        if (op === "lte") return right != null && left <= right;
+        if (op === "eq") return right != null && left === right;
+        if (op === "neq") return right != null && left !== right;
+        if (op === "between") {
+          if (right == null || right2 == null) return false;
+          const min = Math.min(right, right2);
+          const max = Math.max(right, right2);
+          return left >= min && left <= max;
+        }
+        return false;
+      }
+
+      const left = toText(leftRaw).toLowerCase();
+      const right = String(rule.value1 || "").toLowerCase();
+
+      if (op === "contains") return right === "" ? true : left.includes(right);
+      if (op === "not_contains") return right === "" ? true : !left.includes(right);
+      if (op === "eq") return left === right;
+      if (op === "neq") return left !== right;
+      if (op === "starts_with") return right === "" ? true : left.startsWith(right);
+      if (op === "ends_with") return right === "" ? true : left.endsWith(right);
+
+      return true;
+    }
+
+    function passAdvancedFilters(row) {
+      if (!state.advancedRules.length) return true;
+      const results = state.advancedRules.map((rule) => evaluateRule(row, rule));
+      return ui.advMode.value === "any" ? results.some(Boolean) : results.every(Boolean);
+    }
+
+    function createDefaultRule() {
+      if (!state.filterFields.length) return null;
+      const def = state.filterFields[0];
+      return {
+        id: state.nextRuleId++,
+        field: def.key,
+        op: defaultOpForType(def.type),
+        value1: "",
+        value2: ""
+      };
+    }
+
+    function addAdvancedRule() {
+      const rule = createDefaultRule();
+      if (!rule) return;
+      state.advancedRules.push(rule);
+      renderRuleList();
+      applyView();
+    }
+
+    function clearAdvancedRules() {
+      state.advancedRules = [];
+      renderRuleList();
+      applyView();
+    }
+
+    function renderRuleList() {
+      if (!state.filterFields.length) {
+        render(
+          html`<div class="rule-placeholder">파일을 먼저 불러오면 필드 목록이 생성됩니다.</div>`,
+          ui.ruleList
+        );
+        return;
+      }
+
+      if (!state.advancedRules.length) {
+        render(
+          html`<div class="rule-placeholder">규칙이 없습니다. 규칙 추가 버튼으로 필터 조건을 추가하세요.</div>`,
+          ui.ruleList
+        );
+        return;
+      }
+
+      const onFieldChange = (rule, value) => {
+        rule.field = value;
+        const nextDef = getFieldDef(rule.field);
+        rule.op = defaultOpForType(nextDef?.type || "text");
+        rule.value1 = "";
+        rule.value2 = "";
+        renderRuleList();
+        applyView();
+      };
+
+      const onOpChange = (rule, value) => {
+        rule.op = value;
+        if (!opNeedsValue(rule.op)) {
+          rule.value1 = "";
+          rule.value2 = "";
+        } else if (!opNeedsSecondValue(rule.op)) {
+          rule.value2 = "";
+        }
+        renderRuleList();
+        applyView();
+      };
+
+      const onRemoveRule = (ruleId) => {
+        state.advancedRules = state.advancedRules.filter((r) => r.id !== ruleId);
+        renderRuleList();
+        applyView();
+      };
+
+      render(
+        html`${state.advancedRules.map((rule) => {
+          const def = getFieldDef(rule.field) || state.filterFields[0];
+          const ops = getOpsForType(def.type);
+          const inputType = def.type === "number" ? "number" : "text";
+
+          return html`
+            <div class="rule-row">
+              <select
+                .value=${rule.field}
+                @change=${(event) => onFieldChange(rule, event.target.value)}
+              >
+                ${state.filterFields.map((field) => html`
+                  <option value=${field.key}>${field.label} [${getTypeLabel(field.type)}]</option>
+                `)}
+              </select>
+              <select
+                .value=${rule.op}
+                @change=${(event) => onOpChange(rule, event.target.value)}
+              >
+                ${ops.map((op) => html`
+                  <option value=${op.value}>${op.label}</option>
+                `)}
+              </select>
+              <input
+                type=${inputType}
+                step="any"
+                placeholder="값"
+                .value=${rule.value1}
+                ?hidden=${!opNeedsValue(rule.op)}
+                @input=${(event) => {
+                  rule.value1 = event.target.value;
+                  applyView();
+                }}
+              />
+              <input
+                type=${inputType}
+                step="any"
+                placeholder="끝값"
+                .value=${rule.value2}
+                ?hidden=${!opNeedsSecondValue(rule.op)}
+                @input=${(event) => {
+                  rule.value2 = event.target.value;
+                  applyView();
+                }}
+              />
+              <button
+                type="button"
+                class="btn alt slim"
+                @click=${() => onRemoveRule(rule.id)}
+              >
+                삭제
+              </button>
+            </div>
+          `;
+        })}`,
+        ui.ruleList
+      );
+    }
+
+    function renderConvenienceChips() {
+      if (!state.convenienceCatalog.length) {
+        render(html`<div class="rule-placeholder">편의시설 데이터가 없습니다.</div>`, ui.convenienceChips);
+        return;
+      }
+
+      const toggleConvenience = (name) => {
+        if (state.selectedConveniences.includes(name)) {
+          state.selectedConveniences = state.selectedConveniences.filter((x) => x !== name);
+        } else {
+          state.selectedConveniences.push(name);
+        }
+        renderConvenienceChips();
+        applyView();
+      };
+
+      render(
+        html`${state.convenienceCatalog.map((item) => {
+          const isActive = state.selectedConveniences.includes(item.name);
+          return html`
+            <button
+              type="button"
+              class=${isActive ? "facility-chip active" : "facility-chip"}
+              @click=${() => toggleConvenience(item.name)}
+            >
+              ${item.name} (${numFmt.format(item.count)})
+            </button>
+          `;
+        })}`,
+        ui.convenienceChips
+      );
+    }
+
+    function renderTopKeywordFilter() {
+      const prevValue = ui.topKeywordFilter.value || "all";
+
+      render(
+        html`
+          <option value="all">전체</option>
+          ${state.topKeywordCatalog.map((item) => html`
+            <option value=${item.keyword}>${item.keyword} (${numFmt.format(item.count)})</option>
+          `)}
+        `,
+        ui.topKeywordFilter
+      );
+
+      if (prevValue !== "all" && state.topKeywordCatalog.some((item) => item.keyword === prevValue)) {
+        ui.topKeywordFilter.value = prevValue;
+      } else {
+        ui.topKeywordFilter.value = "all";
+      }
+    }
+
+    function applyView() {
+      const keywords = parseSearchKeywords(ui.searchInput.value);
+      const minReviews = state.minReviewPreset;
+      const maxDistance = state.maxDistancePreset;
+      const refDateTime = getReferenceDateTime();
+      const refOpenMode = ui.refOpenMode.value;
+      const topKeywordFilter = ui.topKeywordFilter.value;
+      const convenienceMode = ui.convenienceMode.value;
+      const distanceCenter = getDistanceCenter();
+      const hasDistanceCenter = Boolean(distanceCenter);
+
+      for (const row of state.rows) {
+        row.distanceM = hasDistanceCenter
+          ? distanceFromXYMeters(row.x, row.y, distanceCenter.x, distanceCenter.y)
+          : null;
+        const refState = computeReferenceOpenState(row, refDateTime);
+        row.openAtRefLabel = refState.label;
+        row.openAtRefRank = refState.rank;
+        row.openAtRefCode = refState.code;
+      }
+
+      const filtered = state.rows.filter((row) => {
+        if (row.reviewCount < minReviews) return false;
+
+        if (maxDistance != null && hasDistanceCenter) {
+          if (row.distanceM == null || row.distanceM > maxDistance) return false;
+        }
+
+        if (refOpenMode !== "all" && row.openAtRefCode !== refOpenMode) return false;
+        if (topKeywordFilter !== "all" && row.topKeyword !== topKeywordFilter) return false;
+
+        if (state.selectedConveniences.length) {
+          if (convenienceMode === "all") {
+            if (!state.selectedConveniences.every((item) => row.conveniences.includes(item))) return false;
+          } else {
+            if (!state.selectedConveniences.some((item) => row.conveniences.includes(item))) return false;
+          }
+        }
+
+        if (keywords.length) {
+          const text = [
+            row.name,
+            row.category,
+            row.address,
+            row.options,
+            row.phone,
+            row.topKeyword,
+            row.openDesc,
+            row.openAtRefLabel,
+            row.priceCategory,
+            row.parkingDetail,
+            row.detailConveniences,
+            row.conveniencesText,
+            row.broadcastInfo
+          ].join(" ").toLowerCase();
+          if (!keywords.some((keyword) => text.includes(keyword))) return false;
+        }
+
+        if (!passAdvancedFilters(row)) return false;
+
+        return true;
+      });
+
+      state.viewRows = sortRows(filtered);
+      renderBody();
+      renderSortChips();
+      renderStatus();
+    }
+
+    function renderHead() {
+      render(html`
+        <tr>
+          ${columns.map((col) => {
+            const marker = getSortMarker(col.key);
+            return html`
+              <th>
+                <button
+                  type="button"
+                  data-key=${col.key}
+                  @click=${(event) => updateSort(col.key, event.shiftKey)}
+                >
+                  <span>${col.label}</span>
+                  ${marker ? html`<span class="sort-mark">${marker}</span>` : nothing}
+                </button>
+              </th>
+            `;
+          })}
+        </tr>
+      `, ui.head);
+    }
+
+    function getCellClassName(col, row) {
+      const classNames = [];
+      if (col.className) classNames.push(col.className);
+      if (col.key === "petFriendly") classNames.push(row.petFriendly ? "pet-yes" : "pet-no");
+      if (col.key === "openAtRefRank") {
+        if (row.openAtRefCode === "open") classNames.push("open-ref-open");
+        else if (row.openAtRefCode === "break") classNames.push("open-ref-break");
+        else if (row.openAtRefCode === "closed" || row.openAtRefLabel === "휴무") classNames.push("open-ref-closed");
+        else classNames.push("open-ref-unknown");
+      }
+      return classNames.join(" ");
+    }
+
+    function renderCell(row, col) {
+      if (col.key === "name") {
+        const name = row.name || "(이름 없음)";
+        if (row.mapUrl) {
+          return html`
+            <a class="place-link" href=${row.mapUrl} target="_blank" rel="noreferrer noopener">${name}</a>
+          `;
+        }
+        return name;
+      }
+
+      if (col.key === "reviewCount") return numFmt.format(row.reviewCount);
+      if (col.key === "avgRating") return row.avgRating ? row.avgRating.toFixed(2) : "-";
+      if (col.key === "distanceM") return row.distanceM == null ? "-" : numFmt.format(row.distanceM);
+
+      if (col.key === "topKeywordPct") {
+        if (!row.topKeyword && row.topKeywordPct <= 0) return "-";
+        const pct = `${row.topKeywordPct.toFixed(1)}%`;
+        const key = row.topKeyword ? ` (${row.topKeyword})` : "";
+        return pct + key;
+      }
+
+      if (col.key === "openAtRefRank") return row.openAtRefLabel || "-";
+      if (col.key === "petFriendly") return row.petFriendly ? "동반 가능" : "정보 없음";
+
+      return row[col.key] || "-";
+    }
+
+    function renderBody() {
+      if (!state.viewRows.length) {
+        render(html`
+          <tr>
+            <td colspan=${columns.length} class="empty">데이터가 없습니다. 파일을 불러오거나 필터를 완화해 주세요.</td>
+          </tr>
+        `, ui.body);
+        return;
+      }
+
+      render(html`
+        ${state.viewRows.map((row) => html`
+          <tr>
+            ${columns.map((col) => {
+              const className = getCellClassName(col, row);
+              return html`<td class=${className || nothing}>${renderCell(row, col)}</td>`;
+            })}
+          </tr>
+        `)}
+      `, ui.body);
+    }
+
+    function renderSortChips() {
+      if (!state.sort.length) {
+        render(nothing, ui.sortChips);
+        return;
+      }
+
+      render(html`
+        ${state.sort.map((item, idx) => {
+          const col = columns.find((c) => c.key === item.key);
+          const direction = item.dir === "asc" ? "▲" : "▼";
+          return html`
+            <div class="chip">
+              ${idx + 1}. ${col ? col.label : item.key} ${direction}
+              <button
+                type="button"
+                @click=${() => {
+                  state.sort = state.sort.filter((s) => s.key !== item.key);
+                  renderHead();
+                  applyView();
+                }}
+              >
+                x
+              </button>
+            </div>
+          `;
+        })}
+      `, ui.sortChips);
+    }
+
+    function renderStatus() {
+      const total = state.rows.length;
+      const shown = state.viewRows.length;
+      ui.status.style.color = "var(--muted)";
+      ui.status.innerHTML = `데이터 <strong>${numFmt.format(shown)}</strong> / ${numFmt.format(total)}개`;
+    }
+
+    function updateSort(key, isMulti) {
+      const idx = state.sort.findIndex((s) => s.key === key);
+
+      if (isMulti) {
+        if (idx < 0) {
+          state.sort.push({ key, dir: "asc" });
+        } else if (state.sort[idx].dir === "asc") {
+          state.sort[idx].dir = "desc";
+        } else {
+          state.sort.splice(idx, 1);
+        }
+      } else {
+        if (idx === 0 && state.sort.length === 1 && state.sort[0].dir === "asc") {
+          state.sort = [{ key, dir: "desc" }];
+        } else if (idx === 0 && state.sort.length === 1 && state.sort[0].dir === "desc") {
+          state.sort = [];
+        } else {
+          state.sort = [{ key, dir: "asc" }];
+        }
+      }
+
+      renderHead();
+      applyView();
+    }
+
+    function loadJsonText(text) {
+      let payload;
+      try {
+        payload = JSON.parse(text);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        ui.status.style.color = "var(--warn)";
+        ui.status.textContent = `JSON 파싱 실패: ${message}`;
+        return;
+      }
+
+      try {
+        state.rows = parseJsonToRows(payload);
+        state.sort = [];
+        state.selectedConveniences = [];
+        state.advancedRules = [];
+        state.nextRuleId = 1;
+        state.convenienceCatalog = buildConvenienceCatalog(state.rows);
+        state.topKeywordCatalog = buildTopKeywordCatalog(state.rows);
+
+        state.filterFields = buildFilterFields(state.rows);
+        state.filterFieldMap = new Map(state.filterFields.map((f) => [f.key, f]));
+        clearDistanceCenter();
+        state.centerSearchResults = [];
+        renderCenterSearchResults();
+        setCenterSearchStatus("주소/건물명을 검색하고 옵션에서 선택하면 거리를 계산합니다.", "muted");
+
+        renderHead();
+        renderTopKeywordFilter();
+        renderConvenienceChips();
+        renderRuleList();
+        applyView();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        ui.status.style.color = "var(--warn)";
+        ui.status.textContent = `데이터 변환 실패: ${message}`;
+      }
+    }
+
+    function bindEvents() {
+      ui.fileInput.addEventListener("change", (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => loadJsonText(String(reader.result || ""));
+        reader.readAsText(file, "utf-8");
+      });
+
+      ui.searchInput.addEventListener("input", applyView);
+      ui.centerSearchInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          if (!applyCenterSearchResultFromInput()) {
+            searchDistanceCenter();
+          }
+        }
+      });
+      ui.centerSearchInput.addEventListener("change", () => {
+        applyCenterSearchResultFromInput();
+      });
+      ui.centerSearchInput.addEventListener("blur", () => {
+        applyCenterSearchResultFromInput({ silentStatus: true });
+      });
+      ui.searchCenterBtn.addEventListener("click", searchDistanceCenter);
+      ui.refDate.addEventListener("input", applyView);
+      ui.refTime.addEventListener("input", applyView);
+      ui.refOpenMode.addEventListener("change", applyView);
+      ui.topKeywordFilter.addEventListener("change", applyView);
+      ui.convenienceMode.addEventListener("change", applyView);
+      ui.advMode.addEventListener("change", applyView);
+
+      ui.addRuleBtn.addEventListener("click", addAdvancedRule);
+      ui.clearRulesBtn.addEventListener("click", clearAdvancedRules);
+      ui.clearConvenienceBtn.addEventListener("click", () => {
+        state.selectedConveniences = [];
+        renderConvenienceChips();
+        applyView();
+      });
+
+      ui.resetBtn.addEventListener("click", () => {
+        ui.searchInput.value = "";
+        state.minReviewPreset = DEFAULT_MIN_REVIEW;
+        state.maxDistancePreset = DEFAULT_MAX_DISTANCE;
+        renderPresetFilters();
+        ui.centerSearchInput.value = "";
+        clearDistanceCenter();
+        state.centerSearchResults = [];
+        renderCenterSearchResults();
+        setCenterSearchStatus("주소/건물명을 검색하고 옵션에서 선택하면 거리를 계산합니다.", "muted");
+        const now = new Date();
+        ui.refDate.value = toInputDate(now);
+        ui.refTime.value = toInputTime(now);
+        ui.refOpenMode.value = "all";
+        ui.topKeywordFilter.value = "all";
+        ui.convenienceMode.value = "all";
+        ui.advMode.value = "all";
+        state.sort = [];
+        state.selectedConveniences = [];
+        state.advancedRules = [];
+        renderHead();
+        renderConvenienceChips();
+        renderRuleList();
+        applyView();
+      });
+
+      document.addEventListener("dragover", (event) => event.preventDefault());
+      document.addEventListener("drop", (event) => {
+        event.preventDefault();
+        const file = event.dataTransfer?.files?.[0];
+        if (!file || !file.name.toLowerCase().endsWith(".json")) return;
+        const reader = new FileReader();
+        reader.onload = () => loadJsonText(String(reader.result || ""));
+        reader.readAsText(file, "utf-8");
+      });
+    }
+
+    function init() {
+      const now = new Date();
+      state.minReviewPreset = DEFAULT_MIN_REVIEW;
+      state.maxDistancePreset = DEFAULT_MAX_DISTANCE;
+      ui.refDate.value = toInputDate(now);
+      ui.refTime.value = toInputTime(now);
+      ui.refOpenMode.value = "all";
+      ui.topKeywordFilter.value = "all";
+      ui.convenienceMode.value = "all";
+      renderPresetFilters();
+      clearDistanceCenter();
+      setCenterSearchLoading(false);
+      renderCenterSearchResults();
+      setCenterSearchStatus("주소/건물명을 검색하고 옵션에서 선택하면 거리를 계산합니다.", "muted");
+      renderHead();
+      renderBody();
+      renderTopKeywordFilter();
+      renderConvenienceChips();
+      renderRuleList();
+      bindEvents();
+      renderStatus();
+    }
+
+    init();
+  </script>
+</body>
+</html>
