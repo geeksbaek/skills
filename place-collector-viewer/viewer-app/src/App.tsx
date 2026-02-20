@@ -255,7 +255,7 @@ const MAX_DISTANCE_PRESETS: Array<{ label: string; value: number | null }> = [
 
 const DEFAULT_MIN_REVIEW = 50
 const DEFAULT_MAX_DISTANCE: number | null = null
-const ACTIVE_FIELD_CLASS = "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30 focus-visible:ring-offset-0 focus-visible:border-primary"
+const ACTIVE_FIELD_CLASS = ""
 const CENTER_SEARCH_ENDPOINT = "https://nominatim.openstreetmap.org/search"
 const CENTER_SEARCH_FALLBACK_ENDPOINT = "https://photon.komoot.io/api/"
 const CENTER_SEARCH_LIMIT = 8
