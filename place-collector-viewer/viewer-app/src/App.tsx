@@ -256,6 +256,21 @@ const MAX_DISTANCE_PRESETS: Array<{ label: string; value: number | null }> = [
 const DEFAULT_MIN_REVIEW = 50
 const DEFAULT_MAX_DISTANCE: number | null = null
 const ACTIVE_FIELD_CLASS = ""
+const APP_SURFACE_CLASS = "min-h-screen bg-[radial-gradient(circle_at_0%_0%,rgba(15,118,110,0.14),transparent_42%),radial-gradient(circle_at_100%_0%,rgba(59,130,246,0.14),transparent_40%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] p-4 md:p-6 xl:h-dvh xl:overflow-hidden"
+const APP_CONTENT_CLASS = "mx-auto flex w-full max-w-[1600px] flex-col gap-4 xl:h-full xl:min-h-0"
+const APP_GRID_CLASS = "grid gap-4 xl:min-h-0 xl:flex-1 xl:grid-cols-[430px_minmax(0,1fr)]"
+const CARD_HEADER_CLASS = "space-y-2 px-4 py-0 md:px-5"
+const CARD_CONTENT_CLASS = "px-4 py-0 md:px-5 xl:flex xl:min-h-0 xl:flex-1"
+const PANEL_STACK_CLASS = "space-y-4"
+const FIELD_STACK_CLASS = "space-y-2"
+const CHIP_ROW_CLASS = "flex flex-wrap gap-2"
+const FORM_GRID_CLASS = "grid gap-3 md:grid-cols-[1fr_1.2fr_auto]"
+const TWO_COL_GRID_CLASS = "grid gap-3 sm:grid-cols-2"
+const ACTION_ROW_CLASS = "flex flex-wrap items-end gap-3"
+const ACCORDION_CLASS = "rounded-lg border bg-muted/30 px-3 py-1"
+const ACCORDION_CONTENT_STACK_CLASS = "space-y-4"
+const MOBILE_LIST_CLASS = "space-y-3 p-3"
+const MOBILE_ROW_CARD_CLASS = "space-y-3 rounded-lg border bg-card p-3"
 const CENTER_SEARCH_ENDPOINT = "https://nominatim.openstreetmap.org/search"
 const CENTER_SEARCH_FALLBACK_ENDPOINT = "https://photon.komoot.io/api/"
 const CENTER_SEARCH_LIMIT = 8
@@ -1318,22 +1333,22 @@ function App() {
   })
 
   return (
-    <div data-ui="div-006" className="min-h-screen bg-[radial-gradient(circle_at_0%_0%,rgba(15,118,110,0.14),transparent_42%),radial-gradient(circle_at_100%_0%,rgba(59,130,246,0.14),transparent_40%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] p-3 md:p-5 xl:h-dvh xl:overflow-hidden">
-      <div data-ui="div-007" className="mx-auto flex w-full max-w-[1600px] flex-col gap-3 xl:h-full xl:min-h-0">
-        <div data-ui="div-018" className="grid gap-3 xl:min-h-0 xl:flex-1 xl:grid-cols-[430px_minmax(0,1fr)]">
+    <div data-ui="div-006" className={APP_SURFACE_CLASS}>
+      <div data-ui="div-007" className={APP_CONTENT_CLASS}>
+        <div data-ui="div-018" className={APP_GRID_CLASS}>
           <Card data-ui="card-019" className="border-slate-200/80 shadow-xl shadow-slate-900/5 xl:flex xl:h-full xl:min-h-0 xl:flex-col">
-            <CardHeader data-ui="card-019-header" className="space-y-2 px-4 py-0 md:px-5">
+            <CardHeader data-ui="card-019-header" className={CARD_HEADER_CLASS}>
               <CardTitle data-ui="card-019-title" className="text-xl font-semibold">Place Datagrid</CardTitle>
             </CardHeader>
-            <CardContent data-ui="card-content-020" className="px-4 py-0 md:px-5 xl:flex xl:min-h-0 xl:flex-1">
+            <CardContent data-ui="card-content-020" className={CARD_CONTENT_CLASS}>
               <ScrollArea data-ui="scroll-area-021" className="h-[min(72vh,860px)] xl:h-full" viewportClassName="px-2">
-                <div data-ui="div-022" className="space-y-4">
-                  <div data-ui="div-023" className="space-y-2">
+                <div data-ui="div-022" className={PANEL_STACK_CLASS}>
+                  <div data-ui="div-023" className={FIELD_STACK_CLASS}>
                     <label data-ui="label-024" className="text-xs font-semibold text-muted-foreground" htmlFor="fileInput">JSON 파일</label>
                     <Input data-ui="input-025" className={ACTIVE_FIELD_CLASS} id="fileInput" ref={fileInputRef} type="file" accept=".json,application/json" onChange={handleFileChange} />
                   </div>
 
-                  <div data-ui="div-026" className="space-y-2">
+                  <div data-ui="div-026" className={FIELD_STACK_CLASS}>
                     <label data-ui="label-027" className="text-xs font-semibold text-muted-foreground" htmlFor="searchInput">통합 검색</label>
                     <Input data-ui="input-028"
                       className={ACTIVE_FIELD_CLASS}
@@ -1345,9 +1360,9 @@ function App() {
                     <p data-ui="p-029" className="text-[11px] text-muted-foreground">콤마(,)로 여러 키워드를 입력하면 OR 조건으로 검색합니다.</p>
                   </div>
 
-                  <div data-ui="div-030" className="space-y-2">
+                  <div data-ui="div-030" className={FIELD_STACK_CLASS}>
                     <label data-ui="label-031" className="text-xs font-semibold text-muted-foreground">최소 리뷰 수</label>
-                    <div data-ui="div-032" className="flex flex-wrap gap-2" id="minReviewsChips">
+                    <div data-ui="div-032" className={CHIP_ROW_CLASS} id="minReviewsChips">
                       {MIN_REVIEW_PRESETS.map((preset) => (
                         <Button data-ui={`min-review-chip-${preset.value}`}
                           key={preset.value}
@@ -1362,9 +1377,9 @@ function App() {
                     </div>
                   </div>
 
-                  <div data-ui="div-034" className="space-y-2">
+                  <div data-ui="div-034" className={FIELD_STACK_CLASS}>
                     <label data-ui="label-035" className="text-xs font-semibold text-muted-foreground">최대 거리(m)</label>
-                    <div data-ui="div-036" className="flex flex-wrap gap-2" id="maxDistanceChips">
+                    <div data-ui="div-036" className={CHIP_ROW_CLASS} id="maxDistanceChips">
                       {MAX_DISTANCE_PRESETS.map((preset) => (
                         <Button data-ui={`max-distance-chip-${preset.value ?? "none"}`}
                           key={preset.label}
@@ -1379,11 +1394,11 @@ function App() {
                     </div>
                   </div>
 
-                  <div data-ui="div-038" className="space-y-2">
+                  <div data-ui="div-038" className={FIELD_STACK_CLASS}>
                     <label data-ui="label-039" className="text-xs font-semibold text-muted-foreground" htmlFor="centerSearchInput">
                       거리 기준 주소/건물명
                     </label>
-                    <form data-ui="form-040" id="centerSearchForm" className="grid gap-2 md:grid-cols-[1fr_1.2fr_auto]" onSubmit={handleCenterFormSubmit}>
+                    <form data-ui="form-040" id="centerSearchForm" className={FORM_GRID_CLASS} onSubmit={handleCenterFormSubmit}>
                       <Input data-ui="input-041"
                         className={ACTIVE_FIELD_CLASS}
                         id="centerSearchInput"
@@ -1446,19 +1461,19 @@ function App() {
                     </p>
                   </div>
 
-                  <div data-ui="div-052" className="grid gap-2 sm:grid-cols-2">
-                    <div data-ui="div-053" className="space-y-2">
+                  <div data-ui="div-052" className={TWO_COL_GRID_CLASS}>
+                    <div data-ui="div-053" className={FIELD_STACK_CLASS}>
                       <label data-ui="label-054" className="text-xs font-semibold text-muted-foreground" htmlFor="refDate">기준 날짜</label>
                       <Input data-ui="input-055" className={ACTIVE_FIELD_CLASS} id="refDate" type="date" value={refDate} onChange={(event) => setRefDate(event.target.value)} />
                     </div>
-                    <div data-ui="div-056" className="space-y-2">
+                    <div data-ui="div-056" className={FIELD_STACK_CLASS}>
                       <label data-ui="label-057" className="text-xs font-semibold text-muted-foreground" htmlFor="refTime">기준 시간</label>
                       <Input data-ui="input-058" className={ACTIVE_FIELD_CLASS} id="refTime" type="time" step={60} value={refTime} onChange={(event) => setRefTime(event.target.value)} />
                     </div>
                   </div>
 
-                  <div data-ui="div-059" className="grid gap-2 sm:grid-cols-2">
-                    <div data-ui="div-060" className="space-y-2">
+                  <div data-ui="div-059" className={TWO_COL_GRID_CLASS}>
+                    <div data-ui="div-060" className={FIELD_STACK_CLASS}>
                       <label data-ui="label-061" className="text-xs font-semibold text-muted-foreground">기준시각 영업 상태</label>
                       <Select data-ui="select-062" value={refOpenMode} onValueChange={setRefOpenMode}>
                         <SelectTrigger data-ui="select-trigger-063" id="refOpenMode" className={`w-full ${ACTIVE_FIELD_CLASS}`}>
@@ -1474,7 +1489,7 @@ function App() {
                       </Select>
                     </div>
 
-                    <div data-ui="div-071" className="space-y-2">
+                    <div data-ui="div-071" className={FIELD_STACK_CLASS}>
                       <label data-ui="label-072" className="text-xs font-semibold text-muted-foreground">최상위 키워드</label>
                       <Select data-ui="select-073" value={topKeywordFilter} onValueChange={setTopKeywordFilter}>
                         <SelectTrigger data-ui="select-trigger-074" id="topKeywordFilter" className={`w-full ${ACTIVE_FIELD_CLASS}`}>
@@ -1498,7 +1513,7 @@ function App() {
 
                   <Separator data-ui="separator-081" />
 
-                  <div data-ui="div-082" id="sortChips" className="flex flex-wrap gap-2">
+                  <div data-ui="div-082" id="sortChips" className={CHIP_ROW_CLASS}>
                     {sorting.map((item, idx) => {
                       const col = columns.find((c) => String(c.key) === item.id)
                       return (
@@ -1522,7 +1537,7 @@ function App() {
                     type="multiple"
                     value={accordionValues}
                     onValueChange={setAccordionValues}
-                    className="rounded-lg border bg-muted/30 px-3"
+                    className={ACCORDION_CLASS}
                   >
                     <AccordionItem data-ui="accordion-item-087" value="convenience">
                       <AccordionTrigger data-ui="accordion-trigger-088" id="convenienceAccordionTrigger" className="py-3">
@@ -1531,9 +1546,9 @@ function App() {
                           <span data-ui="span-091" className="text-xs text-muted-foreground">옵션/편의시설 정보를 합쳐 필터합니다.</span>
                         </div>
                       </AccordionTrigger>
-                      <AccordionContent data-ui="accordion-content-092" id="convenienceAccordionContent" className="space-y-3">
-                        <div data-ui="div-093" className="flex flex-wrap items-end gap-2">
-                          <div data-ui="div-094" className="min-w-[180px] flex-1 space-y-2">
+                      <AccordionContent data-ui="accordion-content-092" id="convenienceAccordionContent" className={ACCORDION_CONTENT_STACK_CLASS}>
+                        <div data-ui="div-093" className={ACTION_ROW_CLASS}>
+                          <div data-ui="div-094" className={`min-w-[180px] flex-1 ${FIELD_STACK_CLASS}`}>
                             <label data-ui="label-095" className="text-xs font-semibold text-muted-foreground">선택 방식</label>
                             <Select data-ui="select-096" value={convenienceMode} onValueChange={(value: RuleMode) => setConvenienceMode(value)}>
                               <SelectTrigger data-ui="select-trigger-097" id="convenienceMode" className={`w-full ${ACTIVE_FIELD_CLASS}`}>
@@ -1549,7 +1564,7 @@ function App() {
                             선택 해제
                           </Button>
                         </div>
-                        <div data-ui="div-103" id="convenienceChips" className="flex flex-wrap gap-2">
+                        <div data-ui="div-103" id="convenienceChips" className={CHIP_ROW_CLASS}>
                           {!convenienceCatalog.length ? (
                             <div data-ui="div-104" className="rounded-md border border-dashed bg-background/80 px-3 py-2 text-xs text-muted-foreground">
                               편의시설 데이터가 없습니다.
@@ -1581,9 +1596,9 @@ function App() {
                           <span data-ui="span-110" className="text-xs text-muted-foreground">파생/원본 필드에 규칙 기반 조건을 추가합니다.</span>
                         </div>
                       </AccordionTrigger>
-                      <AccordionContent data-ui="accordion-content-111" id="advancedAccordionContent" className="space-y-3">
-                        <div data-ui="div-112" className="flex flex-wrap items-end gap-2">
-                          <div data-ui="div-113" className="min-w-[180px] flex-1 space-y-2">
+                      <AccordionContent data-ui="accordion-content-111" id="advancedAccordionContent" className={ACCORDION_CONTENT_STACK_CLASS}>
+                        <div data-ui="div-112" className={ACTION_ROW_CLASS}>
+                          <div data-ui="div-113" className={`min-w-[180px] flex-1 ${FIELD_STACK_CLASS}`}>
                             <label data-ui="label-114" className="text-xs font-semibold text-muted-foreground">규칙 결합</label>
                             <Select data-ui="select-115" value={advMode} onValueChange={(value: RuleMode) => setAdvMode(value)}>
                               <SelectTrigger data-ui="select-trigger-116" id="advMode" className={`w-full ${ACTIVE_FIELD_CLASS}`}>
@@ -1617,7 +1632,7 @@ function App() {
                               return (
                                 <div data-ui={`advanced-rule-row-${rule.id}`}
                                   key={rule.id}
-                                  className="grid gap-2 rounded-md border bg-background p-2 sm:grid-cols-[minmax(220px,1.3fr)_minmax(132px,0.8fr)_minmax(120px,1fr)_minmax(120px,1fr)_auto]"
+                                  className="grid gap-3 rounded-md border bg-background p-3 sm:grid-cols-[minmax(220px,1.3fr)_minmax(132px,0.8fr)_minmax(120px,1fr)_minmax(120px,1fr)_auto]"
                                 >
                                   <Select data-ui={`advanced-rule-field-select-${rule.id}`} value={rule.field} onValueChange={(value) => updateRuleField(rule.id, value)}>
                                     <SelectTrigger data-ui={`advanced-rule-field-trigger-${rule.id}`} className={`w-full ${ACTIVE_FIELD_CLASS}`}>
@@ -1680,8 +1695,8 @@ function App() {
           </Card>
 
           <Card data-ui="card-140" className="border-slate-200/80 shadow-xl shadow-slate-900/5 xl:flex xl:h-full xl:min-h-0 xl:flex-col">
-            <CardHeader data-ui="card-header-141" className="space-y-2 px-4 py-0 md:px-5">
-              <div data-ui="div-142" id="status" className="space-y-2">
+            <CardHeader data-ui="card-header-141" className={CARD_HEADER_CLASS}>
+              <div data-ui="div-142" id="status" className={FIELD_STACK_CLASS}>
                 {statusError ? (
                   <div data-ui="div-143" className="text-sm font-medium text-red-600">{statusError}</div>
                 ) : (
@@ -1689,7 +1704,7 @@ function App() {
                     <div data-ui="div-144" className="text-sm text-muted-foreground">
                       데이터 <strong data-ui="strong-145">{numFmt.format(viewRows.length)}</strong> / {numFmt.format(rows.length)}개
                     </div>
-                    <div data-ui="div-146" className="flex flex-wrap gap-2">
+                    <div data-ui="div-146" className={CHIP_ROW_CLASS}>
                       {statusBadges.length ? (
                         statusBadges.map((label, idx) => (
                           <Badge data-ui={`status-badge-${idx}-${uiToken(label)}`} key={label} variant="secondary">{label}</Badge>
@@ -1702,9 +1717,9 @@ function App() {
                 )}
               </div>
             </CardHeader>
-            <CardContent data-ui="card-content-149" className="px-4 py-0 md:px-5 xl:flex xl:min-h-0 xl:flex-1 xl:flex-col">
+            <CardContent data-ui="card-content-149" className={`${CARD_CONTENT_CLASS} xl:flex-col`}>
               <ScrollArea data-ui="scroll-area-150" className="h-[min(72vh,860px)] rounded-lg border bg-background md:hidden xl:h-full">
-                <div data-ui="div-151" className="space-y-3 p-3">
+                <div data-ui="div-151" className={MOBILE_LIST_CLASS}>
                   {!table.getRowModel().rows.length ? (
                     <div data-ui="div-152" className="py-8 text-center text-sm text-muted-foreground">
                       데이터가 없습니다. 파일을 불러오거나 필터를 완화해 주세요.
@@ -1713,7 +1728,7 @@ function App() {
                     table.getRowModel().rows.map((rowModel) => {
                       const row = rowModel.original
                       return (
-                        <div data-ui={`mobile-row-card-${uiToken(rowModel.id)}`} key={rowModel.id} className="space-y-2 rounded-lg border bg-card p-3">
+                        <div data-ui={`mobile-row-card-${uiToken(rowModel.id)}`} key={rowModel.id} className={MOBILE_ROW_CARD_CLASS}>
                           <div data-ui={`mobile-row-header-${uiToken(rowModel.id)}`} className="flex items-start justify-between gap-2">
                             {row.mapUrl ? (
                               <a data-ui={`mobile-row-name-link-${uiToken(rowModel.id)}`} className="font-semibold text-primary hover:underline" href={row.mapUrl} target="_blank" rel="noreferrer noopener">
