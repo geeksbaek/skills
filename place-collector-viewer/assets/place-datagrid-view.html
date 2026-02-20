@@ -1153,6 +1153,7 @@
       distanceCenterSource: "unset",
       selectedCenterSearchResultId: null,
       centerSearchResults: [],
+      centerSearchOptionsOpen: false,
       centerSearchSeq: 0,
       centerSearchLoading: false,
       minReviewPreset: DEFAULT_MIN_REVIEW,
@@ -1326,6 +1327,7 @@
       state.distanceCenter = null;
       state.distanceCenterSource = "unset";
       state.selectedCenterSearchResultId = null;
+      state.centerSearchOptionsOpen = false;
     }
 
     function getDistanceCenter() {
@@ -1369,7 +1371,8 @@
     }
 
     function renderCenterSearchResults() {
-      if (!state.centerSearchResults.length) {
+      const shouldShow = state.centerSearchOptionsOpen && state.centerSearchResults.length > 0;
+      if (!shouldShow) {
         ui.centerSearchOptions.hidden = true;
         render(nothing, ui.centerSearchOptions);
         return;
@@ -1443,6 +1446,7 @@
 
       setDistanceCenter({ x: selected.x, y: selected.y });
       state.selectedCenterSearchResultId = resultId;
+      state.centerSearchOptionsOpen = false;
       renderCenterSearchResults();
       if (!silentStatus) {
         setCenterSearchStatus(`기준점 적용: ${selected.label}`, "ok");
@@ -1532,6 +1536,8 @@
 
       const searchSeq = state.centerSearchSeq + 1;
       state.centerSearchSeq = searchSeq;
+      state.centerSearchOptionsOpen = false;
+      renderCenterSearchResults();
       setCenterSearchLoading(true);
       setCenterSearchStatus(`주소 검색 중: ${query}`, "muted");
 
@@ -1565,6 +1571,7 @@
           .map((item, index) => normalizeCenterSearchResult(item, index))
           .filter(Boolean);
         state.selectedCenterSearchResultId = null;
+        state.centerSearchOptionsOpen = state.centerSearchResults.length > 0;
 
         renderCenterSearchResults();
 
