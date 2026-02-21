@@ -359,6 +359,19 @@ function normalizePriceCategory(text: unknown): string {
   return toText(text).replace(/\s+/g, " ").trim()
 }
 
+function toPriceCategoryEmoji(text: unknown): string {
+  const normalized = normalizePriceCategory(text)
+  if (!normalized) return "-"
+
+  const matched = normalized.match(/(\d+)/)
+  const value = matched ? Number(matched[1]) : Number.NaN
+
+  if (!Number.isFinite(value) || value <= 1) return "💰"
+  if (value <= 3) return "💰💰"
+  if (value <= 5) return "💰💰💰"
+  return "💰💰💰💰"
+}
+
 function extractConveniences(optionsValue: unknown, detailConveniencesValue: unknown): string[] {
   const items: string[] = []
   const push = (value: unknown) => {
@@ -1423,15 +1436,7 @@ function App() {
     if (column.key === "petFriendly") return row.petFriendly ? "🐾" : "-"
     if (column.key === "hasParkingOption") return row.hasParkingOption ? "🅿️" : "-"
     if (column.key === "hasTakeoutOption") return row.hasTakeoutOption ? "🥡" : "-"
-    if (column.key === "priceCategory") {
-      if (!row.priceCategory) return "-"
-      const m = row.priceCategory.match(/(\d+)/)
-      const n = m ? Number(m[1]) : 0
-      if (n <= 1) return "💰"
-      if (n <= 3) return "💰💰"
-      if (n <= 5) return "💰💰💰"
-      return "💰💰💰💰"
-    }
+    if (column.key === "priceCategory") return toPriceCategoryEmoji(row.priceCategory)
 
     return toText(row[column.key]) || "-"
   }
@@ -1671,8 +1676,9 @@ function App() {
                           size="sm"
                           variant={item.category === priceCategoryFilter ? "default" : "outline"}
                           onClick={() => setPriceCategoryFilter(item.category)}
+                          title={item.category}
                         >
-                          {item.category} ({numFmt.format(item.count)})
+                          {toPriceCategoryEmoji(item.category)} ({numFmt.format(item.count)})
                         </Button>
                       ))}
                     </div>
