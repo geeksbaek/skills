@@ -1789,7 +1789,7 @@ function App() {
                     </Field>
                   </div>
 
-                  <div data-ui="div-059" className={TWO_COL_GRID_CLASS}>
+                  <div data-ui="div-059" className="grid gap-3">
                     <Field data-ui="field-060" className={FIELD_STACK_CLASS}>
                       <FieldLabel data-ui="field-label-061" className="text-xs font-semibold text-muted-foreground">기준시각 영업 상태</FieldLabel>
                       <div data-ui="div-ref-open-mode-062" id="refOpenModeChips" className={CHIP_ROW_CLASS}>
