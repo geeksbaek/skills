@@ -272,6 +272,15 @@ const REF_OPEN_MODE_PRESETS = [
   { label: "영업종료만", value: "closed" },
   { label: "계산불가/휴무만", value: "unknown" },
 ]
+const PET_FEED_KEYWORDS = [
+  "반려동물",
+  "반려견",
+  "강아지",
+  "애견",
+  "반려묘",
+  "고양이",
+  "펫",
+]
 
 const DEFAULT_MIN_REVIEW = 50
 const DEFAULT_MAX_DISTANCE: number | null = null
@@ -556,6 +565,40 @@ function formatDetailHours(raw: RawRecord | undefined): string[] {
     lines.push(line)
   }
   return lines
+}
+
+function extractFeedTooltipByKeywords(
+  raw: RawRecord | undefined,
+  keywords: string[],
+  limit: number = 3
+): string {
+  if (!raw || !keywords.length) return ""
+
+  const feeds = Array.isArray((raw as { feeds?: unknown }).feeds)
+    ? ((raw as { feeds: Array<Record<string, unknown>> }).feeds ?? [])
+    : []
+
+  if (!feeds.length) return ""
+
+  const normalizedKeywords = keywords.map((keyword) => keyword.toLowerCase())
+  const rows: string[] = []
+  const seen = new Set<string>()
+
+  for (const feed of feeds) {
+    const title = toText(feed.title).replace(/\s+/g, " ").trim()
+    const desc = toText(feed.desc).replace(/\s+/g, " ").trim()
+    const haystack = `${title} ${desc}`.toLowerCase()
+    if (!normalizedKeywords.some((keyword) => haystack.includes(keyword))) continue
+
+    const snippet = title ? `${title}${desc ? `\n${desc}` : ""}` : desc
+    if (!snippet || seen.has(snippet)) continue
+
+    seen.add(snippet)
+    rows.push(snippet)
+    if (rows.length >= limit) break
+  }
+
+  return rows.join("\n\n")
 }
 
 function normalizeRecord(raw: RawRecord, fallbackId: string, index: number): PlaceRow {
@@ -1518,21 +1561,26 @@ function App() {
         )
       }
 
+      if (column.key === "petFriendly") {
+        const petTip = extractFeedTooltipByKeywords(rawMapRef.current.get(row.original._index), PET_FEED_KEYWORDS, 4)
+        if (petTip) {
+          return (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="cursor-help">{cellContent}</span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-sm whitespace-pre-wrap text-left text-xs leading-relaxed">
+                {petTip}
+              </TooltipContent>
+            </Tooltip>
+          )
+        }
+      }
+
       if (column.key === "hasParkingOption" && row.original.hasParkingOption) {
         let parkingTip = row.original.parkingDetail
         if (!parkingTip) {
-          const raw = rawMapRef.current.get(row.original._index)
-          const feeds = raw && Array.isArray((raw as { feeds?: unknown }).feeds)
-            ? ((raw as { feeds: Array<Record<string, unknown>> }).feeds)
-            : []
-          for (const f of feeds) {
-            const title = toText(f.title)
-            const desc = toText(f.desc)
-            if (title.includes("주차") || desc.includes("주차")) {
-              parkingTip = title + (desc ? `\n${desc}` : "")
-              break
-            }
-          }
+          parkingTip = extractFeedTooltipByKeywords(rawMapRef.current.get(row.original._index), ["주차"], 1)
         }
         if (parkingTip) {
           return (
