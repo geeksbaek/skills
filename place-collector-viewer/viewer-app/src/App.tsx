@@ -1807,24 +1807,24 @@ function App() {
                         ))}
                       </div>
                     </Field>
-
-                    <Field data-ui="field-071" className={FIELD_STACK_CLASS}>
-                      <FieldLabel data-ui="field-label-072" className="text-xs font-semibold text-muted-foreground">최상위 키워드</FieldLabel>
-                      <Select data-ui="select-073" value={topKeywordFilter} onValueChange={setTopKeywordFilter}>
-                        <SelectTrigger data-ui="select-trigger-074" id="topKeywordFilter" className={`w-full ${ACTIVE_FIELD_CLASS}`}>
-                          <SelectValue data-ui="select-value-075" placeholder="전체" />
-                        </SelectTrigger>
-                        <SelectContent data-ui="select-content-076">
-                          <SelectItem data-ui="select-item-077" value="all">전체</SelectItem>
-                          {topKeywordCatalog.map((item, idx) => (
-                            <SelectItem data-ui={`top-keyword-option-${idx}-${uiToken(item.keyword)}`} key={item.keyword} value={item.keyword}>
-                              {item.keyword} ({numFmt.format(item.count)})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </Field>
                   </div>
+
+                  <Field data-ui="field-071" className={FIELD_STACK_CLASS}>
+                    <FieldLabel data-ui="field-label-072" className="text-xs font-semibold text-muted-foreground">최상위 키워드</FieldLabel>
+                    <Select data-ui="select-073" value={topKeywordFilter} onValueChange={setTopKeywordFilter}>
+                      <SelectTrigger data-ui="select-trigger-074" id="topKeywordFilter" className={`w-full ${ACTIVE_FIELD_CLASS}`}>
+                        <SelectValue data-ui="select-value-075" placeholder="전체" />
+                      </SelectTrigger>
+                      <SelectContent data-ui="select-content-076">
+                        <SelectItem data-ui="select-item-077" value="all">전체</SelectItem>
+                        {topKeywordCatalog.map((item, idx) => (
+                          <SelectItem data-ui={`top-keyword-option-${idx}-${uiToken(item.keyword)}`} key={item.keyword} value={item.keyword}>
+                            {item.keyword} ({numFmt.format(item.count)})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
 
                   <Button data-ui="button-079" id="resetBtn" type="button" variant="outline" size="sm" className="w-full" onClick={resetFilters}>
                     <RotateCcw data-ui="rotate-ccw-080" className="size-4" /> 필터 초기화
