@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   Check,
   ChevronsUpDown,
+  FolderOpen,
   Loader2,
   RotateCcw,
   SlidersHorizontal,
@@ -15,6 +16,7 @@ import {
   type SortingState,
   useReactTable,
 } from "@tanstack/react-table"
+import { useVirtualizer } from "@tanstack/react-virtual"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -24,7 +26,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Field, FieldDescription, FieldGroup, FieldLabel, FieldSet } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
@@ -65,7 +68,7 @@ interface CenterSearchResult {
 
 interface PlaceRow {
   _index: number
-  raw: RawRecord
+  _searchText: string
   id: string
   name: string
   category: string
@@ -97,6 +100,7 @@ interface PlaceRow {
   hasParkingOption: boolean
   hasValetOption: boolean
   hasReservationOption: boolean
+  hasTakeoutOption: boolean
   detailConveniences: string
   regularClosedDays: string
   saveCount: number
@@ -123,6 +127,9 @@ const columns: ColumnDef[] = [
   { key: "reviewCount", label: "리뷰수", type: "number" },
   { key: "distanceM", label: "거리(m)", type: "number" },
   { key: "topKeywordPct", label: "최상위 키워드%", type: "number" },
+  { key: "priceCategory", label: "가격대", type: "text" },
+  { key: "hasParkingOption", label: "주차", type: "boolean" },
+  { key: "hasTakeoutOption", label: "포장", type: "boolean" },
   { key: "petFriendly", label: "반려동물", type: "boolean" },
   { key: "openAtRefRank", label: "기준시점 영업", type: "number" },
 ]
@@ -158,6 +165,7 @@ const DERIVED_FIELD_META: Record<string, { label: string; type: ColumnType }> = 
   hasParkingOption: { label: "옵션:주차", type: "boolean" },
   hasValetOption: { label: "옵션:발렛", type: "boolean" },
   hasReservationOption: { label: "옵션:예약", type: "boolean" },
+  hasTakeoutOption: { label: "옵션:포장", type: "boolean" },
   detailConveniences: { label: "편의정보", type: "text" },
   regularClosedDays: { label: "정기휴무", type: "text" },
   saveCount: { label: "저장수", type: "number" },
@@ -259,10 +267,10 @@ const MAX_DISTANCE_PRESETS: Array<{ label: string; value: number | null }> = [
 
 const DEFAULT_MIN_REVIEW = 50
 const DEFAULT_MAX_DISTANCE: number | null = null
-const ACTIVE_FIELD_CLASS = ""
+const ACTIVE_FIELD_CLASS = "h-8"
 const APP_SURFACE_CLASS = "min-h-screen bg-[radial-gradient(circle_at_0%_0%,rgba(15,118,110,0.14),transparent_42%),radial-gradient(circle_at_100%_0%,rgba(59,130,246,0.14),transparent_40%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] p-4 md:p-6 xl:h-dvh xl:overflow-hidden"
 const APP_CONTENT_CLASS = "mx-auto flex w-full max-w-[1600px] flex-col gap-4 xl:h-full xl:min-h-0"
-const APP_GRID_CLASS = "grid gap-4 xl:min-h-0 xl:flex-1 xl:grid-cols-[430px_minmax(0,1fr)]"
+const APP_GRID_CLASS = "grid gap-4 xl:min-h-0 xl:flex-1 xl:grid-cols-[360px_minmax(0,1fr)]"
 const CARD_HEADER_CLASS = "space-y-2 px-4 py-0 md:px-5"
 const CARD_CONTENT_CLASS = "min-w-0 px-4 py-0 md:px-5 xl:flex xl:min-h-0 xl:flex-1"
 const PANEL_STACK_CLASS = "min-w-0 w-full max-w-full gap-4"
@@ -270,7 +278,6 @@ const FIELD_STACK_CLASS = "min-w-0 flex flex-col gap-2"
 const CHIP_ROW_CLASS = "flex flex-wrap gap-2"
 const TWO_COL_GRID_CLASS = "grid gap-3 sm:grid-cols-2"
 const ACTION_ROW_CLASS = "flex flex-wrap items-end gap-3"
-const MOBILE_LIST_CLASS = "space-y-3 p-3"
 const MOBILE_ROW_CARD_CLASS = "space-y-3 rounded-lg border bg-card p-3"
 const CENTER_SEARCH_MIN_QUERY = 2
 const CENTER_SEARCH_DEBOUNCE_MS = 320
@@ -338,6 +345,10 @@ function normalizeConvenienceLabel(text: unknown): string {
   if (!normalized) return ""
   if (normalized.includes("�")) return ""
   return normalized
+}
+
+function normalizePriceCategory(text: unknown): string {
+  return toText(text).replace(/\s+/g, " ").trim()
 }
 
 function extractConveniences(optionsValue: unknown, detailConveniencesValue: unknown): string[] {
@@ -415,14 +426,15 @@ function matchDayLabel(dayText: unknown, dayKo: string): boolean {
   return false
 }
 
-function computeReferenceOpenState(row: PlaceRow, refDateTime: Date): OpenState {
+function computeReferenceOpenState(row: PlaceRow, refDateTime: Date, rawMap: Map<number, RawRecord>): OpenState {
   const fallback = row.openDesc ? `계산불가 · ${row.openDesc}` : "계산불가"
   if (!(refDateTime instanceof Date) || Number.isNaN(refDateTime.getTime())) {
     return { label: fallback, rank: 0, code: "unknown" }
   }
 
-  const details = Array.isArray((row.raw as { detailHours?: unknown }).detailHours)
-    ? ((row.raw as { detailHours: Array<Record<string, unknown>> }).detailHours ?? [])
+  const raw = rawMap.get(row._index)
+  const details = raw && Array.isArray((raw as { detailHours?: unknown }).detailHours)
+    ? ((raw as { detailHours: Array<Record<string, unknown>> }).detailHours ?? [])
     : []
 
   if (!details.length) {
@@ -495,6 +507,36 @@ function getTopKeyword(details: unknown, reviewCount: number): { label: string; 
   return { label: "", count: 0, pct: 0 }
 }
 
+function formatDetailHours(raw: RawRecord | undefined): string[] {
+  if (!raw) return []
+  const details = Array.isArray((raw as { detailHours?: unknown }).detailHours)
+    ? ((raw as { detailHours: Array<Record<string, unknown>> }).detailHours ?? [])
+    : []
+  if (!details.length) return []
+
+  const lines: string[] = []
+  for (const entry of details) {
+    const day = toText(entry.day)
+    const bh = entry.businessHours as { start?: string; end?: string } | null | undefined
+    if (!bh || !bh.start) {
+      lines.push(`${day}  휴무`)
+      continue
+    }
+    let line = `${day}  ${bh.start}–${bh.end}`
+    const breaks = Array.isArray(entry.breakHours) ? (entry.breakHours as Array<{ start?: string; end?: string }>) : []
+    if (breaks.length) {
+      line += `  (브레이크 ${breaks.map((b) => `${b.start}–${b.end}`).join(", ")})`
+    }
+    const lastOrders = Array.isArray(entry.lastOrderTimes) ? (entry.lastOrderTimes as Array<{ time?: string }>) : []
+    if (lastOrders.length) {
+      const times = lastOrders.map((lo) => lo.time).filter(Boolean)
+      if (times.length) line += `  L.O ${times.join(", ")}`
+    }
+    lines.push(line)
+  }
+  return lines
+}
+
 function normalizeRecord(raw: RawRecord, fallbackId: string, index: number): PlaceRow {
   const reviewCount = toNum(raw.reviewCount)
   const avgRating = toNum(raw.avgRating)
@@ -512,12 +554,27 @@ function normalizeRecord(raw: RawRecord, fallbackId: string, index: number): Pla
   const feedsCount = Array.isArray(raw.feeds) ? raw.feeds.length : 0
   const hasFeeds = feedsCount > 0
 
+  const name = toText(raw.name)
+  const category = toText(raw.category)
+  const address = toText(raw.roadAddress || raw.commonAddress || "")
+  const phone = toText(raw.detailPhone)
+  const openDescText = toText((raw.detailStatus as { description?: Primitive } | undefined)?.description || (raw.newBusinessHours as { description?: Primitive } | undefined)?.description || "")
+  const priceCategoryText = normalizePriceCategory(raw.priceCategory)
+  const conveniencesTextVal = conveniences.join(", ")
+
+  const _searchText = [
+    name, category, address, options, phone,
+    topKeyword.label, openDescText, priceCategoryText,
+    parkingDetail, detailConveniences, conveniencesTextVal,
+    broadcastInfo,
+  ].join(" ").toLowerCase()
+
   return {
     _index: index,
-    raw,
+    _searchText,
     id: placeId,
-    name: toText(raw.name),
-    category: toText(raw.category),
+    name,
+    category,
     reviewCount,
     avgRating,
     rawDistanceM: parsedDistance,
@@ -526,18 +583,18 @@ function normalizeRecord(raw: RawRecord, fallbackId: string, index: number): Pla
     topKeyword: topKeyword.label,
     topKeywordCount: topKeyword.count,
     topKeywordPct: Number(topKeyword.pct.toFixed(1)),
-    openDesc: toText((raw.detailStatus as { description?: Primitive } | undefined)?.description || (raw.newBusinessHours as { description?: Primitive } | undefined)?.description || ""),
+    openDesc: openDescText,
     openAtRefLabel: "",
     openAtRefRank: 0,
     openAtRefCode: "unknown",
-    address: toText(raw.roadAddress || raw.commonAddress || ""),
+    address,
     roadAddress: toText(raw.roadAddress),
     commonAddress: toText(raw.commonAddress),
-    phone: toText(raw.detailPhone),
+    phone,
     options,
     conveniences,
-    conveniencesText: conveniences.join(", "),
-    priceCategory: toText(raw.priceCategory),
+    conveniencesText: conveniencesTextVal,
+    priceCategory: priceCategoryText,
     newOpening: Boolean(raw.newOpening),
     broadcastInfo,
     hasBroadcast: broadcastInfo.trim() !== "",
@@ -546,6 +603,7 @@ function normalizeRecord(raw: RawRecord, fallbackId: string, index: number): Pla
     hasParkingOption: options.includes("주차"),
     hasValetOption: options.includes("발렛"),
     hasReservationOption: options.includes("예약"),
+    hasTakeoutOption: options.includes("포장"),
     detailConveniences,
     regularClosedDays,
     saveCount: toNum(raw.saveCount),
@@ -561,7 +619,7 @@ function normalizeRecord(raw: RawRecord, fallbackId: string, index: number): Pla
   }
 }
 
-function parseJsonToRows(payload: unknown): PlaceRow[] {
+function parseJsonToRows(payload: unknown): { rows: PlaceRow[]; rawMap: Map<number, RawRecord> } {
   let entries: Array<[string, RawRecord]> = []
 
   if (Array.isArray(payload)) {
@@ -572,7 +630,13 @@ function parseJsonToRows(payload: unknown): PlaceRow[] {
     throw new Error("JSON 루트는 객체 또는 배열이어야 합니다.")
   }
 
-  return entries.map(([id, record], i) => normalizeRecord(record || {}, id, i))
+  const rawMap = new Map<number, RawRecord>()
+  const rows = entries.map(([id, record], i) => {
+    const raw = record || {}
+    rawMap.set(i, raw)
+    return normalizeRecord(raw, id, i)
+  })
+  return { rows, rawMap }
 }
 
 function buildConvenienceCatalog(rows: PlaceRow[]): Array<{ name: string; count: number }> {
@@ -601,13 +665,48 @@ function buildTopKeywordCatalog(rows: PlaceRow[]): Array<{ keyword: string; coun
     .map(([keyword, count]) => ({ keyword, count }))
 }
 
-function inferTypeFromRows(rows: PlaceRow[], fieldKey: string): ColumnType {
+function buildPriceCategoryCatalog(rows: PlaceRow[]): Array<{ category: string; count: number }> {
+  const counts = new Map<string, number>()
+
+  for (const row of rows) {
+    const category = normalizePriceCategory(row.priceCategory)
+    if (!category) continue
+    counts.set(category, (counts.get(category) || 0) + 1)
+  }
+
+  const readLeadingNumber = (value: string): number | null => {
+    const matched = value.match(/(\d+(?:\.\d+)?)/)
+    if (!matched) return null
+    const parsed = Number(matched[1])
+    return Number.isFinite(parsed) ? parsed : null
+  }
+
+  return [...counts.entries()]
+    .sort(([categoryA, countA], [categoryB, countB]) => {
+      if (countA !== countB) return countB - countA
+      const numberA = readLeadingNumber(categoryA)
+      const numberB = readLeadingNumber(categoryB)
+      if (numberA != null && numberB != null && numberA !== numberB) return numberA - numberB
+      if (numberA != null && numberB == null) return -1
+      if (numberA == null && numberB != null) return 1
+      return categoryA.localeCompare(categoryB, "ko")
+    })
+    .map(([category, count]) => ({ category, count }))
+}
+
+function inferTypeFromRows(rows: PlaceRow[], fieldKey: string, rawMap?: Map<number, RawRecord>): ColumnType {
   const isRaw = fieldKey.startsWith("raw.")
   if (fieldKey === "raw.id") return "text"
 
   for (const row of rows) {
     const rowRecord = row as unknown as Record<string, unknown>
-    const value = isRaw ? (row.raw as Record<string, unknown>)[fieldKey.slice(4)] : rowRecord[fieldKey]
+    let value: unknown
+    if (isRaw) {
+      const raw = rawMap?.get(row._index)
+      value = raw ? (raw as Record<string, unknown>)[fieldKey.slice(4)] : undefined
+    } else {
+      value = rowRecord[fieldKey]
+    }
     if (value === null || value === undefined || value === "") continue
 
     if (typeof value === "boolean") return "boolean"
@@ -624,7 +723,7 @@ function inferTypeFromRows(rows: PlaceRow[], fieldKey: string): ColumnType {
   return "text"
 }
 
-function buildFilterFields(rows: PlaceRow[]): FieldDef[] {
+function buildFilterFields(rows: PlaceRow[], rawMap: Map<number, RawRecord>): FieldDef[] {
   if (!rows.length) return []
 
   const defs: FieldDef[] = []
@@ -639,10 +738,10 @@ function buildFilterFields(rows: PlaceRow[]): FieldDef[] {
   }
 
   Object.keys(first)
-    .filter((key) => !["_index", "raw"].includes(key))
+    .filter((key) => !["_index", "_searchText"].includes(key))
     .forEach((key) => {
       const meta = DERIVED_FIELD_META[key]
-      const type = meta?.type || inferTypeFromRows(rows, key)
+      const type = meta?.type || inferTypeFromRows(rows, key, rawMap)
       const label = meta?.label || key
       pushField(key, label, type, "derived")
       derivedKeys.add(key)
@@ -650,7 +749,8 @@ function buildFilterFields(rows: PlaceRow[]): FieldDef[] {
 
   const rawKeys = new Set<string>()
   for (const row of rows) {
-    Object.keys(row.raw || {}).forEach((key) => rawKeys.add(key))
+    const raw = rawMap.get(row._index)
+    if (raw) Object.keys(raw).forEach((key) => rawKeys.add(key))
   }
 
   Array.from(rawKeys)
@@ -659,7 +759,7 @@ function buildFilterFields(rows: PlaceRow[]): FieldDef[] {
       const mappedDerivedKey = RAW_TO_DERIVED_FIELD[rawKey] || rawKey
       if (derivedKeys.has(mappedDerivedKey)) return
       const key = `raw.${rawKey}`
-      const type = inferTypeFromRows(rows, key)
+      const type = inferTypeFromRows(rows, key, rawMap)
       const label = RAW_FIELD_LABELS[rawKey] || rawKey
       pushField(key, label, type, "raw")
     })
@@ -671,9 +771,10 @@ function buildFilterFields(rows: PlaceRow[]): FieldDef[] {
   })
 }
 
-function getFieldValue(row: PlaceRow, fieldKey: string): unknown {
+function getFieldValue(row: PlaceRow, fieldKey: string, rawMap?: Map<number, RawRecord>): unknown {
   if (fieldKey.startsWith("raw.")) {
-    return (row.raw as Record<string, unknown>)[fieldKey.slice(4)]
+    const raw = rawMap?.get(row._index)
+    return raw ? (raw as Record<string, unknown>)[fieldKey.slice(4)] : undefined
   }
   return (row as unknown as Record<string, unknown>)[fieldKey]
 }
@@ -709,11 +810,11 @@ function isEmptyValue(value: unknown): boolean {
   return false
 }
 
-function evaluateRule(row: PlaceRow, rule: AdvancedRule, filterFieldMap: Map<string, FieldDef>): boolean {
+function evaluateRule(row: PlaceRow, rule: AdvancedRule, filterFieldMap: Map<string, FieldDef>, rawMap?: Map<number, RawRecord>): boolean {
   const def = filterFieldMap.get(rule.field)
   if (!def) return true
 
-  const leftRaw = getFieldValue(row, rule.field)
+  const leftRaw = getFieldValue(row, rule.field, rawMap)
   const op = rule.op
 
   if (op === "is_empty") return isEmptyValue(leftRaw)
@@ -756,9 +857,9 @@ function evaluateRule(row: PlaceRow, rule: AdvancedRule, filterFieldMap: Map<str
   return true
 }
 
-function passAdvancedFilters(row: PlaceRow, rules: AdvancedRule[], mode: RuleMode, filterFieldMap: Map<string, FieldDef>): boolean {
+function passAdvancedFilters(row: PlaceRow, rules: AdvancedRule[], mode: RuleMode, filterFieldMap: Map<string, FieldDef>, rawMap?: Map<number, RawRecord>): boolean {
   if (!rules.length) return true
-  const results = rules.map((rule) => evaluateRule(row, rule, filterFieldMap))
+  const results = rules.map((rule) => evaluateRule(row, rule, filterFieldMap, rawMap))
   return mode === "any" ? results.some(Boolean) : results.every(Boolean)
 }
 
@@ -868,6 +969,7 @@ function App() {
   const [refTime, setRefTime] = useState(toInputTime(now))
   const [refOpenMode, setRefOpenMode] = useState("all")
   const [topKeywordFilter, setTopKeywordFilter] = useState("all")
+  const [priceCategoryFilter, setPriceCategoryFilter] = useState("all")
 
   const [convenienceMode, setConvenienceMode] = useState<RuleMode>("all")
   const [selectedConveniences, setSelectedConveniences] = useState<string[]>([])
@@ -879,13 +981,26 @@ function App() {
   const [statusError, setStatusError] = useState<string | null>(null)
   const [convenienceDialogOpen, setConvenienceDialogOpen] = useState(false)
   const [advancedDialogOpen, setAdvancedDialogOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [debouncedSearch, setDebouncedSearch] = useState("")
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const centerSearchSeqRef = useRef(0)
+  const rawMapRef = useRef<Map<number, RawRecord>>(new Map())
+
+  const desktopScrollRef = useRef<HTMLDivElement | null>(null)
+  const mobileScrollRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(searchInput), 200)
+    return () => window.clearTimeout(timer)
+  }, [searchInput])
 
   const convenienceCatalog = useMemo(() => buildConvenienceCatalog(rows), [rows])
   const topKeywordCatalog = useMemo(() => buildTopKeywordCatalog(rows), [rows])
-  const filterFields = useMemo(() => buildFilterFields(rows), [rows])
+  const priceCategoryCatalog = useMemo(() => buildPriceCategoryCatalog(rows), [rows])
+  const filterFields = useMemo(() => buildFilterFields(rows, rawMapRef.current), [rows])
   const filterFieldMap = useMemo(() => new Map(filterFields.map((field) => [field.key, field])), [filterFields])
 
   useEffect(() => {
@@ -894,15 +1009,36 @@ function App() {
     }
   }, [topKeywordCatalog, topKeywordFilter])
 
+  useEffect(() => {
+    if (priceCategoryFilter !== "all" && !priceCategoryCatalog.some((item) => item.category === priceCategoryFilter)) {
+      setPriceCategoryFilter("all")
+    }
+  }, [priceCategoryCatalog, priceCategoryFilter])
+
   const referenceDateTime = useMemo(() => getReferenceDateTime(refDate, refTime), [refDate, refTime])
-  const keywords = useMemo(() => parseSearchKeywords(searchInput), [searchInput])
+  const keywords = useMemo(() => parseSearchKeywords(debouncedSearch), [debouncedSearch])
+
+  const distanceMap = useMemo(() => {
+    if (!distanceCenter) return null
+    const map = new Map<number, number | null>()
+    for (const row of rows) {
+      map.set(row._index, distanceFromXYMeters(row.x, row.y, distanceCenter.x, distanceCenter.y))
+    }
+    return map
+  }, [rows, distanceCenter])
+
+  const openStateMap = useMemo(() => {
+    const map = new Map<number, OpenState>()
+    for (const row of rows) {
+      map.set(row._index, computeReferenceOpenState(row, referenceDateTime, rawMapRef.current))
+    }
+    return map
+  }, [rows, referenceDateTime])
 
   const rowsWithComputed = useMemo(() => {
     return rows.map((row) => {
-      const runtimeDistance = distanceCenter
-        ? distanceFromXYMeters(row.x, row.y, distanceCenter.x, distanceCenter.y)
-        : null
-      const openState = computeReferenceOpenState(row, referenceDateTime)
+      const runtimeDistance = distanceMap ? (distanceMap.get(row._index) ?? null) : null
+      const openState = openStateMap.get(row._index) || { label: "계산불가", rank: 0, code: "unknown" }
       return {
         ...row,
         distanceM: runtimeDistance,
@@ -911,7 +1047,7 @@ function App() {
         openAtRefCode: openState.code,
       }
     })
-  }, [rows, distanceCenter, referenceDateTime])
+  }, [rows, distanceMap, openStateMap])
 
   const showDistanceColumn = distanceCenter !== null
   const visibleColumns = useMemo(
@@ -927,16 +1063,19 @@ function App() {
     })
   }, [showDistanceColumn])
 
+  const effectiveMaxDistance = distanceCenter && maxDistancePreset != null ? maxDistancePreset : null
+
   const filteredRows = useMemo(() => {
     return rowsWithComputed.filter((row) => {
       if (row.reviewCount < minReviewPreset) return false
 
-      if (maxDistancePreset != null && distanceCenter) {
-        if (row.distanceM == null || row.distanceM > maxDistancePreset) return false
+      if (effectiveMaxDistance != null) {
+        if (row.distanceM == null || row.distanceM > effectiveMaxDistance) return false
       }
 
       if (refOpenMode !== "all" && row.openAtRefCode !== refOpenMode) return false
       if (topKeywordFilter !== "all" && row.topKeyword !== topKeywordFilter) return false
+      if (priceCategoryFilter !== "all" && normalizePriceCategory(row.priceCategory) !== priceCategoryFilter) return false
 
       if (selectedConveniences.length) {
         if (convenienceMode === "all") {
@@ -947,32 +1086,15 @@ function App() {
       }
 
       if (keywords.length) {
-        const text = [
-          row.name,
-          row.category,
-          row.address,
-          row.options,
-          row.phone,
-          row.topKeyword,
-          row.openDesc,
-          row.openAtRefLabel,
-          row.priceCategory,
-          row.parkingDetail,
-          row.detailConveniences,
-          row.conveniencesText,
-          row.broadcastInfo,
-        ]
-          .join(" ")
-          .toLowerCase()
-
-        if (!keywords.some((keyword) => text.includes(keyword))) return false
+        const openRefLower = row.openAtRefLabel.toLowerCase()
+        if (!keywords.some((keyword) => row._searchText.includes(keyword) || openRefLower.includes(keyword))) return false
       }
 
-      if (!passAdvancedFilters(row, advancedRules, advMode, filterFieldMap)) return false
+      if (!passAdvancedFilters(row, advancedRules, advMode, filterFieldMap, rawMapRef.current)) return false
 
       return true
     })
-  }, [rowsWithComputed, minReviewPreset, maxDistancePreset, distanceCenter, refOpenMode, topKeywordFilter, selectedConveniences, convenienceMode, keywords, advancedRules, advMode, filterFieldMap])
+  }, [rowsWithComputed, minReviewPreset, effectiveMaxDistance, refOpenMode, topKeywordFilter, priceCategoryFilter, selectedConveniences, convenienceMode, keywords, advancedRules, advMode, filterFieldMap])
 
   const viewRows = filteredRows
 
@@ -981,11 +1103,12 @@ function App() {
     if (keywords.length > 0) list.push(`검색 ${keywords.length}`)
     if (minReviewPreset > 0) list.push(`최소 리뷰 ${numFmt.format(minReviewPreset)}+`)
     if (maxDistancePreset != null) list.push(`최대 거리 ${numFmt.format(maxDistancePreset)}m`)
+    if (priceCategoryFilter !== "all") list.push(`가격대 ${priceCategoryFilter}`)
     if (selectedConveniences.length > 0) list.push(`편의시설 ${selectedConveniences.length}`)
     if (advancedRules.length > 0) list.push(`고급규칙 ${advancedRules.length}`)
     if (sorting.length > 0) list.push(`정렬 ${sorting.length}`)
     return list
-  }, [keywords.length, minReviewPreset, maxDistancePreset, selectedConveniences.length, advancedRules.length, sorting.length])
+  }, [keywords.length, minReviewPreset, maxDistancePreset, priceCategoryFilter, selectedConveniences.length, advancedRules.length, sorting.length])
 
   const selectedCenterSearchResult = useMemo(
     () => centerSearchResults.find((item) => item.id === selectedCenterSearchResultId) ?? null,
@@ -1065,7 +1188,7 @@ function App() {
       }
 
       setCenterSearchStatus({
-        message: `${nextResults.length}건 검색됨 (${providerLabel}) · 옵션을 선택해 기준점을 적용하세요.`,
+        message: `${nextResults.length}건 검색됨 (${providerLabel})`,
         tone: "ok",
       })
     } catch (error) {
@@ -1103,34 +1226,42 @@ function App() {
   }, [centerSearchInput, centerSearchSelectOpen, searchDistanceCenter])
 
   const loadJsonText = useCallback((text: string) => {
-    try {
-      const payload = JSON.parse(text)
-      const nextRows = parseJsonToRows(payload)
+    setLoading(true)
+    setTimeout(() => {
+      try {
+        const payload = JSON.parse(text)
+        const { rows: nextRows, rawMap } = parseJsonToRows(payload)
 
-      setRows(nextRows)
-      setSorting([])
-      setSelectedConveniences([])
-      setAdvancedRules([])
-      setNextRuleId(1)
-      clearDistanceCenter()
-      setCenterSearchResults([])
-      setCenterSearchInput("")
-      setCenterSearchStatus({ message: "주소/건물명을 검색하고 옵션에서 선택하면 거리를 계산합니다.", tone: "muted" })
-      setTopKeywordFilter("all")
-      setStatusError(null)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      if (message.includes("JSON")) {
-        setStatusError(`JSON 파싱 실패: ${message}`)
-      } else {
-        setStatusError(`데이터 변환 실패: ${message}`)
+        rawMapRef.current = rawMap
+        setRows(nextRows)
+        setSorting([])
+        setSelectedConveniences([])
+        setAdvancedRules([])
+        setNextRuleId(1)
+        clearDistanceCenter()
+        setCenterSearchResults([])
+        setCenterSearchInput("")
+        setCenterSearchStatus({ message: "주소/건물명을 검색하고 옵션에서 선택하면 거리를 계산합니다.", tone: "muted" })
+        setTopKeywordFilter("all")
+        setPriceCategoryFilter("all")
+        setStatusError(null)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        if (message.includes("JSON")) {
+          setStatusError(`JSON 파싱 실패: ${message}`)
+        } else {
+          setStatusError(`데이터 변환 실패: ${message}`)
+        }
+      } finally {
+        setLoading(false)
       }
-    }
+    }, 0)
   }, [clearDistanceCenter])
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
+    setSelectedFileName(file.name)
     const reader = new FileReader()
     reader.onload = () => loadJsonText(String(reader.result || ""))
     reader.readAsText(file, "utf-8")
@@ -1230,6 +1361,7 @@ function App() {
   const resetFilters = () => {
     const nowDate = new Date()
     setSearchInput("")
+    setDebouncedSearch("")
     setMinReviewPreset(DEFAULT_MIN_REVIEW)
     setMaxDistancePreset(DEFAULT_MAX_DISTANCE)
     setCenterSearchInput("")
@@ -1240,6 +1372,7 @@ function App() {
     setRefTime(toInputTime(nowDate))
     setRefOpenMode("all")
     setTopKeywordFilter("all")
+    setPriceCategoryFilter("all")
     setConvenienceMode("all")
     setAdvMode("all")
     setSorting([])
@@ -1279,7 +1412,18 @@ function App() {
     }
 
     if (column.key === "openAtRefRank") return row.openAtRefLabel || "-"
-    if (column.key === "petFriendly") return row.petFriendly ? "동반 가능" : "정보 없음"
+    if (column.key === "petFriendly") return row.petFriendly ? "🐾" : "-"
+    if (column.key === "hasParkingOption") return row.hasParkingOption ? "🅿️" : "-"
+    if (column.key === "hasTakeoutOption") return row.hasTakeoutOption ? "🥡" : "-"
+    if (column.key === "priceCategory") {
+      if (!row.priceCategory) return "-"
+      const m = row.priceCategory.match(/(\d+)/)
+      const n = m ? Number(m[1]) : 0
+      if (n <= 1) return "💰"
+      if (n <= 3) return "💰💰"
+      if (n <= 5) return "💰💰💰"
+      return "💰💰💰💰"
+    }
 
     return toText(row[column.key]) || "-"
   }
@@ -1290,11 +1434,13 @@ function App() {
     enableSorting: true,
     header: ({ column: tableColumn }) => {
       const marker = getSortMarker(tableColumn.id)
+      const centerHeaderKeys = ["petFriendly", "hasParkingOption", "hasTakeoutOption", "openAtRefRank", "priceCategory"]
+      const justify = centerHeaderKeys.includes(column.key as string) ? "justify-center" : "justify-start"
       return (
         <Button data-ui={`table-header-sort-button-${uiToken(tableColumn.id)}`}
           type="button"
           variant="ghost"
-          className="h-auto w-full justify-start px-0 py-0 text-xs font-semibold"
+          className={`h-auto w-full ${justify} px-0 py-0 text-xs font-semibold`}
           onClick={tableColumn.getToggleSortingHandler()}
         >
           <span data-ui={`table-header-label-${uiToken(tableColumn.id)}`}>{column.label}</span>
@@ -1303,10 +1449,21 @@ function App() {
       )
     },
     cell: ({ row }) => {
+      const centerKeys = ["petFriendly", "hasParkingOption", "hasTakeoutOption", "openAtRefRank", "priceCategory"]
       const classNames: string[] = ["block"]
-      if (column.type === "number") classNames.push("text-right tabular-nums")
+      if (centerKeys.includes(column.key as string)) classNames.push("text-center")
+      else if (column.type === "number") classNames.push("text-right tabular-nums")
       if (column.key === "petFriendly") {
-        classNames.push(row.original.petFriendly ? "text-emerald-600 font-semibold" : "text-red-600 font-semibold")
+        if (row.original.petFriendly) classNames.push("text-emerald-600 font-semibold")
+        else classNames.push("text-muted-foreground")
+      }
+      if (column.key === "hasParkingOption") {
+        if (row.original.hasParkingOption) classNames.push("text-emerald-600 font-semibold")
+        else classNames.push("text-muted-foreground")
+      }
+      if (column.key === "hasTakeoutOption") {
+        if (row.original.hasTakeoutOption) classNames.push("text-emerald-600 font-semibold")
+        else classNames.push("text-muted-foreground")
       }
       if (column.key === "openAtRefRank") {
         if (row.original.openAtRefCode === "open") classNames.push("text-emerald-600 font-semibold")
@@ -1317,7 +1474,68 @@ function App() {
           classNames.push("text-muted-foreground font-semibold")
         }
       }
-      return <span data-ui={`table-cell-content-${uiToken(row.id)}-${uiToken(column.key)}`} className={classNames.join(" ")}>{renderCell(row.original, column)}</span>
+      const cellContent = <span data-ui={`table-cell-content-${uiToken(row.id)}-${uiToken(column.key)}`} className={classNames.join(" ")}>{renderCell(row.original, column)}</span>
+
+      if (column.key === "openAtRefRank") {
+        const tooltipLines = formatDetailHours(rawMapRef.current.get(row.original._index))
+        if (tooltipLines.length) {
+          return (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="cursor-help">{cellContent}</span>
+              </TooltipTrigger>
+              <TooltipContent side="left" className="whitespace-pre text-left font-mono text-[11px] leading-relaxed">
+                {tooltipLines.join("\n")}
+              </TooltipContent>
+            </Tooltip>
+          )
+        }
+      }
+
+      if (column.key === "priceCategory" && row.original.priceCategory) {
+        return (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="cursor-help">{cellContent}</span>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">
+              {row.original.priceCategory}
+            </TooltipContent>
+          </Tooltip>
+        )
+      }
+
+      if (column.key === "hasParkingOption" && row.original.hasParkingOption) {
+        let parkingTip = row.original.parkingDetail
+        if (!parkingTip) {
+          const raw = rawMapRef.current.get(row.original._index)
+          const feeds = raw && Array.isArray((raw as { feeds?: unknown }).feeds)
+            ? ((raw as { feeds: Array<Record<string, unknown>> }).feeds)
+            : []
+          for (const f of feeds) {
+            const title = toText(f.title)
+            const desc = toText(f.desc)
+            if (title.includes("주차") || desc.includes("주차")) {
+              parkingTip = title + (desc ? `\n${desc}` : "")
+              break
+            }
+          }
+        }
+        if (parkingTip) {
+          return (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="cursor-help">{cellContent}</span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-sm whitespace-pre-wrap text-left text-xs leading-relaxed">
+                {parkingTip}
+              </TooltipContent>
+            </Tooltip>
+          )
+        }
+      }
+
+      return cellContent
     },
   }))
 
@@ -1331,8 +1549,33 @@ function App() {
     enableMultiSort: true,
   })
 
+  const tableRows = table.getRowModel().rows
+
+  const desktopVirtualizer = useVirtualizer({
+    count: tableRows.length,
+    getScrollElement: () => desktopScrollRef.current,
+    estimateSize: () => 40,
+    overscan: 20,
+  })
+
+  const mobileVirtualizer = useVirtualizer({
+    count: tableRows.length,
+    getScrollElement: () => mobileScrollRef.current,
+    estimateSize: () => 140,
+    overscan: 10,
+  })
+
   return (
+    <TooltipProvider>
     <div data-ui="div-006" className={APP_SURFACE_CLASS}>
+      {loading && (
+        <div data-ui="loading-overlay" className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="size-10 animate-spin text-primary" />
+            <span className="text-sm font-medium text-muted-foreground">데이터 처리 중...</span>
+          </div>
+        </div>
+      )}
       <div data-ui="div-007" className={APP_CONTENT_CLASS}>
         <div data-ui="div-018" className={APP_GRID_CLASS}>
           <Card data-ui="card-019" className="border-slate-200/80 shadow-xl shadow-slate-900/5 xl:flex xl:h-full xl:min-h-0 xl:flex-col">
@@ -1343,12 +1586,16 @@ function App() {
               <ScrollArea
                 data-ui="scroll-area-021"
                 className="h-[min(72vh,860px)] w-full min-w-0 xl:h-full"
-                viewportClassName="px-2 [&>div]:!block [&>div]:!w-full [&>div]:!min-w-0"
+                viewportClassName="[&>div]:!block [&>div]:!w-full [&>div]:!min-w-0"
               >
                 <FieldGroup data-ui="field-group-022" className={PANEL_STACK_CLASS}>
                   <Field data-ui="field-023" className={FIELD_STACK_CLASS}>
-                    <FieldLabel data-ui="field-label-024" className="text-xs font-semibold text-muted-foreground" htmlFor="fileInput">JSON 파일</FieldLabel>
-                    <Input data-ui="input-025" className={ACTIVE_FIELD_CLASS} id="fileInput" ref={fileInputRef} type="file" accept=".json,application/json" onChange={handleFileChange} />
+                    <FieldLabel data-ui="field-label-024" className="text-xs font-semibold text-muted-foreground">JSON 파일</FieldLabel>
+                    <input ref={fileInputRef} type="file" accept=".json,application/json" className="hidden" onChange={handleFileChange} />
+                    <Button data-ui="input-025" variant="outline" size="sm" className="w-full justify-start gap-2 text-left font-normal" onClick={() => fileInputRef.current?.click()}>
+                      <FolderOpen className="size-4 shrink-0 text-muted-foreground" />
+                      <span className="truncate">{selectedFileName ?? "파일을 선택하세요..."}</span>
+                    </Button>
                   </Field>
 
                   <Field data-ui="field-026" className={FIELD_STACK_CLASS}>
@@ -1485,11 +1732,11 @@ function App() {
                         </Command>
                       </PopoverContent>
                     </Popover>
-                    <FieldDescription data-ui="field-desc-051"
-                      id="centerSearchStatus"
+                    <FieldDescription
+                      data-ui="field-desc-center-status-208"
                       data-tone={centerSearchStatus.tone}
                       className={[
-                        "text-xs",
+                        "text-[11px]",
                         centerSearchStatus.tone === "ok" ? "text-emerald-600" : "",
                         centerSearchStatus.tone === "warn" ? "text-red-600" : "",
                         centerSearchStatus.tone === "muted" ? "text-muted-foreground" : "",
@@ -1543,31 +1790,29 @@ function App() {
                         </SelectContent>
                       </Select>
                     </Field>
+
+                    <Field data-ui="field-price-category-201" className={FIELD_STACK_CLASS}>
+                      <FieldLabel data-ui="field-label-price-category-202" className="text-xs font-semibold text-muted-foreground">가격대</FieldLabel>
+                      <Select data-ui="select-price-category-203" value={priceCategoryFilter} onValueChange={setPriceCategoryFilter}>
+                        <SelectTrigger data-ui="select-trigger-price-category-204" id="priceCategoryFilter" className={`w-full ${ACTIVE_FIELD_CLASS}`}>
+                          <SelectValue data-ui="select-value-price-category-205" placeholder="전체" />
+                        </SelectTrigger>
+                        <SelectContent data-ui="select-content-price-category-206">
+                          <SelectItem data-ui="select-item-price-category-all-207" value="all">전체</SelectItem>
+                          {priceCategoryCatalog.map((item, idx) => (
+                            <SelectItem data-ui={`price-category-option-${idx}-${uiToken(item.category)}`} key={item.category} value={item.category}>
+                              {item.category} ({numFmt.format(item.count)})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
                   </div>
 
-                  <Button data-ui="button-079" id="resetBtn" type="button" variant="outline" className="w-full" onClick={resetFilters}>
+                  <Button data-ui="button-079" id="resetBtn" type="button" variant="outline" size="sm" className="w-full" onClick={resetFilters}>
                     <RotateCcw data-ui="rotate-ccw-080" className="size-4" /> 필터 초기화
                   </Button>
 
-                  <div data-ui="div-082" id="sortChips" className={CHIP_ROW_CLASS}>
-                    {sorting.map((item, idx) => {
-                      const col = visibleColumns.find((c) => String(c.key) === item.id)
-                      return (
-                        <Badge data-ui={`sort-chip-${idx}-${uiToken(item.id)}`} key={item.id} variant="secondary" className="gap-2">
-                          {idx + 1}. {col ? col.label : item.id} {item.desc ? "▼" : "▲"}
-                          <Button data-ui={`sort-chip-remove-${idx}-${uiToken(item.id)}`}
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="size-5 text-destructive hover:text-destructive"
-                            onClick={() => setSorting((prev) => prev.filter((rule) => rule.id !== item.id))}
-                          >
-                            <X data-ui={`sort-chip-remove-icon-${idx}-${uiToken(item.id)}`} className="size-3" />
-                          </Button>
-                        </Badge>
-                      )
-                    })}
-                  </div>
                 </FieldGroup>
               </ScrollArea>
             </CardContent>
@@ -1592,6 +1837,23 @@ function App() {
                         ) : (
                           <Badge data-ui="badge-148" variant="outline">필터 없음</Badge>
                         )}
+                        {sorting.map((item, idx) => {
+                          const col = visibleColumns.find((c) => String(c.key) === item.id)
+                          return (
+                            <Badge data-ui={`sort-chip-${idx}-${uiToken(item.id)}`} key={item.id} variant="secondary" className="gap-2">
+                              {idx + 1}. {col ? col.label : item.id} {item.desc ? "▼" : "▲"}
+                              <Button data-ui={`sort-chip-remove-${idx}-${uiToken(item.id)}`}
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="size-5 text-destructive hover:text-destructive"
+                                onClick={() => setSorting((prev) => prev.filter((rule) => rule.id !== item.id))}
+                              >
+                                <X data-ui={`sort-chip-remove-icon-${idx}-${uiToken(item.id)}`} className="size-3" />
+                              </Button>
+                            </Badge>
+                          )
+                        })}
                       </div>
                     </>
                   )}
@@ -1725,10 +1987,10 @@ function App() {
                                 return (
                                   <div data-ui={`advanced-rule-row-${rule.id}`}
                                     key={rule.id}
-                                    className="grid gap-3 rounded-md border bg-background p-3 sm:grid-cols-[minmax(220px,1.3fr)_minmax(132px,0.8fr)_minmax(120px,1fr)_minmax(120px,1fr)_auto]"
+                                    className="flex flex-wrap items-center gap-2 rounded-md border bg-background p-3"
                                   >
                                     <Select data-ui={`advanced-rule-field-select-${rule.id}`} value={rule.field} onValueChange={(value) => updateRuleField(rule.id, value)}>
-                                      <SelectTrigger data-ui={`advanced-rule-field-trigger-${rule.id}`} className={`w-full ${ACTIVE_FIELD_CLASS}`}>
+                                      <SelectTrigger data-ui={`advanced-rule-field-trigger-${rule.id}`} className={`min-w-[160px] flex-[2] ${ACTIVE_FIELD_CLASS}`}>
                                         <SelectValue data-ui={`advanced-rule-field-value-${rule.id}`} />
                                       </SelectTrigger>
                                       <SelectContent data-ui={`advanced-rule-field-content-${rule.id}`} className="max-h-80">
@@ -1741,7 +2003,7 @@ function App() {
                                     </Select>
 
                                     <Select data-ui={`advanced-rule-op-select-${rule.id}`} value={rule.op} onValueChange={(value) => updateRuleOp(rule.id, value)}>
-                                      <SelectTrigger data-ui={`advanced-rule-op-trigger-${rule.id}`} className={`w-full ${ACTIVE_FIELD_CLASS}`}>
+                                      <SelectTrigger data-ui={`advanced-rule-op-trigger-${rule.id}`} className={`min-w-[100px] flex-1 ${ACTIVE_FIELD_CLASS}`}>
                                         <SelectValue data-ui={`advanced-rule-op-value-${rule.id}`} />
                                       </SelectTrigger>
                                       <SelectContent data-ui={`advanced-rule-op-content-${rule.id}`}>
@@ -1759,7 +2021,7 @@ function App() {
                                       placeholder="값"
                                       value={rule.value1}
                                       onChange={(event) => updateRuleValue(rule.id, "value1", event.target.value)}
-                                      className={`${ACTIVE_FIELD_CLASS} ${!opNeedsValue(rule.op) ? "hidden" : ""}`}
+                                      className={`min-w-[80px] flex-1 ${ACTIVE_FIELD_CLASS} ${!opNeedsValue(rule.op) ? "hidden" : ""}`}
                                     />
 
                                     <Input data-ui={`advanced-rule-value2-input-${rule.id}`}
@@ -1768,10 +2030,10 @@ function App() {
                                       placeholder="끝값"
                                       value={rule.value2}
                                       onChange={(event) => updateRuleValue(rule.id, "value2", event.target.value)}
-                                      className={`${ACTIVE_FIELD_CLASS} ${!opNeedsSecondValue(rule.op) ? "hidden" : ""}`}
+                                      className={`min-w-[80px] flex-1 ${ACTIVE_FIELD_CLASS} ${!opNeedsSecondValue(rule.op) ? "hidden" : ""}`}
                                     />
 
-                                    <Button data-ui={`advanced-rule-delete-${rule.id}`} type="button" variant="outline" onClick={() => removeAdvancedRule(rule.id)}>
+                                    <Button data-ui={`advanced-rule-delete-${rule.id}`} type="button" variant="outline" size="sm" className="shrink-0" onClick={() => removeAdvancedRule(rule.id)}>
                                       삭제
                                     </Button>
                                   </div>
@@ -1787,17 +2049,35 @@ function App() {
               </div>
             </CardHeader>
             <CardContent data-ui="card-content-149" className={`${CARD_CONTENT_CLASS} xl:flex-col`}>
-              <ScrollArea data-ui="scroll-area-150" className="h-[min(72vh,860px)] rounded-lg border bg-background md:hidden xl:h-full">
-                <div data-ui="div-151" className={MOBILE_LIST_CLASS}>
-                  {!table.getRowModel().rows.length ? (
-                    <div data-ui="div-152" className="py-8 text-center text-sm text-muted-foreground">
-                      데이터가 없습니다. 파일을 불러오거나 필터를 완화해 주세요.
-                    </div>
-                  ) : (
-                    table.getRowModel().rows.map((rowModel) => {
+              <ScrollArea data-ui="scroll-area-150" viewportRef={mobileScrollRef} className="h-[min(72vh,860px)] rounded-lg border bg-background md:hidden xl:h-full">
+                {!tableRows.length ? (
+                  <div data-ui="div-152" className="py-8 text-center text-sm text-muted-foreground">
+                    데이터가 없습니다. 파일을 불러오거나 필터를 완화해 주세요.
+                  </div>
+                ) : (
+                  <div
+                    data-ui="div-151"
+                    style={{ height: `${mobileVirtualizer.getTotalSize()}px`, position: "relative" }}
+                    className="p-3"
+                  >
+                    {mobileVirtualizer.getVirtualItems().map((virtualItem) => {
+                      const rowModel = tableRows[virtualItem.index]
                       const row = rowModel.original
                       return (
-                        <div data-ui={`mobile-row-card-${uiToken(rowModel.id)}`} key={rowModel.id} className={MOBILE_ROW_CARD_CLASS}>
+                        <div
+                          data-ui={`mobile-row-card-${uiToken(rowModel.id)}`}
+                          key={rowModel.id}
+                          ref={mobileVirtualizer.measureElement}
+                          data-index={virtualItem.index}
+                          className={MOBILE_ROW_CARD_CLASS}
+                          style={{
+                            position: "absolute",
+                            top: 0,
+                            left: 12,
+                            right: 12,
+                            transform: `translateY(${virtualItem.start}px)`,
+                          }}
+                        >
                           <div data-ui={`mobile-row-header-${uiToken(rowModel.id)}`} className="flex items-start justify-between gap-2">
                             {row.mapUrl ? (
                               <a data-ui={`mobile-row-name-link-${uiToken(rowModel.id)}`} className="font-semibold text-primary hover:underline" href={row.mapUrl} target="_blank" rel="noreferrer noopener">
@@ -1831,14 +2111,14 @@ function App() {
                           <div data-ui={`mobile-row-address-${uiToken(rowModel.id)}`} className="text-xs text-muted-foreground break-words">{row.address || "-"}</div>
                         </div>
                       )
-                    })
-                  )}
-                </div>
+                    })}
+                  </div>
+                )}
               </ScrollArea>
 
-              <ScrollArea data-ui="scroll-area-172" className="hidden h-[min(72vh,860px)] rounded-lg border bg-background md:block xl:h-full">
+              <div data-ui="scroll-area-172" ref={desktopScrollRef} className="hidden h-[min(72vh,860px)] overflow-auto rounded-lg border bg-background md:block xl:h-full">
                 <div data-ui="div-173" className="min-w-[760px]">
-                  <Table data-ui="table-174">
+                  <Table data-ui="table-174" containerClassName="!overflow-visible">
                     <TableHeader data-ui="table-header-175" id="head" className="sticky top-0 z-10 bg-muted/70 backdrop-blur supports-[backdrop-filter]:bg-muted/70">
                       {table.getHeaderGroups().map((headerGroup) => (
                         <TableRow data-ui={`table-header-row-${uiToken(headerGroup.id)}`} key={headerGroup.id}>
@@ -1851,33 +2131,44 @@ function App() {
                       ))}
                     </TableHeader>
                     <TableBody data-ui="table-body-178" id="body">
-                      {!table.getRowModel().rows.length ? (
+                      {!tableRows.length ? (
                         <TableRow data-ui="table-row-179">
                           <TableCell data-ui="table-cell-180" colSpan={visibleColumns.length} className="py-8 text-center text-muted-foreground">
                             데이터가 없습니다. 파일을 불러오거나 필터를 완화해 주세요.
                           </TableCell>
                         </TableRow>
                       ) : (
-                        table.getRowModel().rows.map((row) => (
-                          <TableRow data-ui={`table-body-row-${uiToken(row.id)}`} key={row.id}>
-                            {row.getVisibleCells().map((cell) => (
-                              <TableCell data-ui={`table-body-cell-${uiToken(cell.id)}`} key={cell.id}>
-                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                              </TableCell>
-                            ))}
-                          </TableRow>
-                        ))
+                        <>
+                          {desktopVirtualizer.getVirtualItems().length > 0 && (
+                            <tr><td style={{ height: `${desktopVirtualizer.getVirtualItems()[0].start}px`, padding: 0, border: "none" }} colSpan={visibleColumns.length} /></tr>
+                          )}
+                          {desktopVirtualizer.getVirtualItems().map((virtualItem) => {
+                            const row = tableRows[virtualItem.index]
+                            return (
+                              <TableRow data-ui={`table-body-row-${uiToken(row.id)}`} key={row.id} ref={desktopVirtualizer.measureElement} data-index={virtualItem.index}>
+                                {row.getVisibleCells().map((cell) => (
+                                  <TableCell data-ui={`table-body-cell-${uiToken(cell.id)}`} key={cell.id}>
+                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                  </TableCell>
+                                ))}
+                              </TableRow>
+                            )
+                          })}
+                          {desktopVirtualizer.getVirtualItems().length > 0 && (
+                            <tr><td style={{ height: `${desktopVirtualizer.getTotalSize() - (desktopVirtualizer.getVirtualItems().at(-1)?.end ?? 0)}px`, padding: 0, border: "none" }} colSpan={visibleColumns.length} /></tr>
+                          )}
+                        </>
                       )}
                     </TableBody>
                   </Table>
                 </div>
-                <ScrollBar data-ui="scroll-bar-183" orientation="horizontal" />
-              </ScrollArea>
+              </div>
             </CardContent>
           </Card>
         </div>
       </div>
     </div>
+    </TooltipProvider>
   )
 }
 
