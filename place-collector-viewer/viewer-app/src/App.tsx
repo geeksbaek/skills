@@ -686,33 +686,33 @@ function buildTopKeywordCatalog(rows: PlaceRow[]): Array<{ keyword: string; coun
     .map(([keyword, count]) => ({ keyword, count }))
 }
 
-function buildPriceCategoryCatalog(rows: PlaceRow[]): Array<{ category: string; count: number }> {
-  const counts = new Map<string, number>()
+function buildPriceEmojiCatalog(rows: PlaceRow[]): Array<{ emoji: string; count: number; categories: string[] }> {
+  const buckets = new Map<string, { count: number; categories: Set<string> }>()
 
   for (const row of rows) {
     const category = normalizePriceCategory(row.priceCategory)
     if (!category) continue
-    counts.set(category, (counts.get(category) || 0) + 1)
+
+    const emoji = toPriceCategoryEmoji(category)
+    if (emoji === "-") continue
+
+    const existing = buckets.get(emoji)
+    if (existing) {
+      existing.count += 1
+      existing.categories.add(category)
+      continue
+    }
+
+    buckets.set(emoji, { count: 1, categories: new Set([category]) })
   }
 
-  const readLeadingNumber = (value: string): number | null => {
-    const matched = value.match(/(\d+(?:\.\d+)?)/)
-    if (!matched) return null
-    const parsed = Number(matched[1])
-    return Number.isFinite(parsed) ? parsed : null
-  }
-
-  return [...counts.entries()]
-    .sort(([categoryA, countA], [categoryB, countB]) => {
-      if (countA !== countB) return countB - countA
-      const numberA = readLeadingNumber(categoryA)
-      const numberB = readLeadingNumber(categoryB)
-      if (numberA != null && numberB != null && numberA !== numberB) return numberA - numberB
-      if (numberA != null && numberB == null) return -1
-      if (numberA == null && numberB != null) return 1
-      return categoryA.localeCompare(categoryB, "ko")
-    })
-    .map(([category, count]) => ({ category, count }))
+  return [...buckets.entries()]
+    .map(([emoji, bucket]) => ({
+      emoji,
+      count: bucket.count,
+      categories: [...bucket.categories].sort((a, b) => a.localeCompare(b, "ko")),
+    }))
+    .sort((a, b) => a.emoji.length - b.emoji.length)
 }
 
 function inferTypeFromRows(rows: PlaceRow[], fieldKey: string, rawMap?: Map<number, RawRecord>): ColumnType {
@@ -1020,7 +1020,7 @@ function App() {
 
   const convenienceCatalog = useMemo(() => buildConvenienceCatalog(rows), [rows])
   const topKeywordCatalog = useMemo(() => buildTopKeywordCatalog(rows), [rows])
-  const priceCategoryCatalog = useMemo(() => buildPriceCategoryCatalog(rows), [rows])
+  const priceEmojiCatalog = useMemo(() => buildPriceEmojiCatalog(rows), [rows])
   const filterFields = useMemo(() => buildFilterFields(rows, rawMapRef.current), [rows])
   const filterFieldMap = useMemo(() => new Map(filterFields.map((field) => [field.key, field])), [filterFields])
 
@@ -1031,10 +1031,10 @@ function App() {
   }, [topKeywordCatalog, topKeywordFilter])
 
   useEffect(() => {
-    if (priceCategoryFilter !== "all" && !priceCategoryCatalog.some((item) => item.category === priceCategoryFilter)) {
+    if (priceCategoryFilter !== "all" && !priceEmojiCatalog.some((item) => item.emoji === priceCategoryFilter)) {
       setPriceCategoryFilter("all")
     }
-  }, [priceCategoryCatalog, priceCategoryFilter])
+  }, [priceEmojiCatalog, priceCategoryFilter])
 
   const referenceDateTime = useMemo(() => getReferenceDateTime(refDate, refTime), [refDate, refTime])
   const keywords = useMemo(() => parseSearchKeywords(debouncedSearch), [debouncedSearch])
@@ -1096,7 +1096,7 @@ function App() {
 
       if (refOpenMode !== "all" && row.openAtRefCode !== refOpenMode) return false
       if (topKeywordFilter !== "all" && row.topKeyword !== topKeywordFilter) return false
-      if (priceCategoryFilter !== "all" && normalizePriceCategory(row.priceCategory) !== priceCategoryFilter) return false
+      if (priceCategoryFilter !== "all" && toPriceCategoryEmoji(row.priceCategory) !== priceCategoryFilter) return false
 
       if (selectedConveniences.length) {
         if (convenienceMode === "all") {
@@ -1668,17 +1668,17 @@ function App() {
                       >
                         전체
                       </Button>
-                      {priceCategoryCatalog.map((item, idx) => (
+                      {priceEmojiCatalog.map((item, idx) => (
                         <Button
-                          data-ui={`price-category-chip-${idx}-${uiToken(item.category)}`}
-                          key={item.category}
+                          data-ui={`price-category-chip-${idx}-${uiToken(item.emoji)}`}
+                          key={item.emoji}
                           type="button"
                           size="sm"
-                          variant={item.category === priceCategoryFilter ? "default" : "outline"}
-                          onClick={() => setPriceCategoryFilter(item.category)}
-                          title={item.category}
+                          variant={item.emoji === priceCategoryFilter ? "default" : "outline"}
+                          onClick={() => setPriceCategoryFilter(item.emoji)}
+                          title={item.categories.join(", ")}
                         >
-                          {toPriceCategoryEmoji(item.category)} ({numFmt.format(item.count)})
+                          {item.emoji} ({numFmt.format(item.count)})
                         </Button>
                       ))}
                     </div>
