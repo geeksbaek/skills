@@ -20,7 +20,7 @@ import { useVirtualizer } from "@tanstack/react-virtual"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Field, FieldDescription, FieldGroup, FieldLabel, FieldSet } from "@/components/ui/field"
@@ -263,6 +263,14 @@ const MAX_DISTANCE_PRESETS: Array<{ label: string; value: number | null }> = [
   { label: "1km", value: 1000 },
   { label: "2km", value: 2000 },
   { label: "5km", value: 5000 },
+]
+
+const REF_OPEN_MODE_PRESETS = [
+  { label: "전체", value: "all" },
+  { label: "영업중만", value: "open" },
+  { label: "브레이크타임만", value: "break" },
+  { label: "영업종료만", value: "closed" },
+  { label: "계산불가/휴무만", value: "unknown" },
 ]
 
 const DEFAULT_MIN_REVIEW = 50
@@ -1579,9 +1587,6 @@ function App() {
       <div data-ui="div-007" className={APP_CONTENT_CLASS}>
         <div data-ui="div-018" className={APP_GRID_CLASS}>
           <Card data-ui="card-019" className="border-slate-200/80 shadow-xl shadow-slate-900/5 xl:flex xl:h-full xl:min-h-0 xl:flex-col">
-            <CardHeader data-ui="card-019-header" className={CARD_HEADER_CLASS}>
-              <CardTitle data-ui="card-019-title" className="text-xl font-semibold">Place Datagrid</CardTitle>
-            </CardHeader>
             <CardContent data-ui="card-content-020" className={CARD_CONTENT_CLASS}>
               <ScrollArea
                 data-ui="scroll-area-021"
@@ -1641,6 +1646,33 @@ function App() {
                           onClick={() => setMaxDistancePreset(preset.value)}
                         >
                           {preset.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </Field>
+
+                  <Field data-ui="field-price-category-201" className={FIELD_STACK_CLASS}>
+                    <FieldLabel data-ui="field-label-price-category-202" className="text-xs font-semibold text-muted-foreground">가격대</FieldLabel>
+                    <div data-ui="div-price-category-203" id="priceCategoryChips" className={CHIP_ROW_CLASS}>
+                      <Button
+                        data-ui="price-category-chip-all-204"
+                        type="button"
+                        size="sm"
+                        variant={priceCategoryFilter === "all" ? "default" : "outline"}
+                        onClick={() => setPriceCategoryFilter("all")}
+                      >
+                        전체
+                      </Button>
+                      {priceCategoryCatalog.map((item, idx) => (
+                        <Button
+                          data-ui={`price-category-chip-${idx}-${uiToken(item.category)}`}
+                          key={item.category}
+                          type="button"
+                          size="sm"
+                          variant={item.category === priceCategoryFilter ? "default" : "outline"}
+                          onClick={() => setPriceCategoryFilter(item.category)}
+                        >
+                          {item.category} ({numFmt.format(item.count)})
                         </Button>
                       ))}
                     </div>
@@ -1760,18 +1792,20 @@ function App() {
                   <div data-ui="div-059" className={TWO_COL_GRID_CLASS}>
                     <Field data-ui="field-060" className={FIELD_STACK_CLASS}>
                       <FieldLabel data-ui="field-label-061" className="text-xs font-semibold text-muted-foreground">기준시각 영업 상태</FieldLabel>
-                      <Select data-ui="select-062" value={refOpenMode} onValueChange={setRefOpenMode}>
-                        <SelectTrigger data-ui="select-trigger-063" id="refOpenMode" className={`w-full ${ACTIVE_FIELD_CLASS}`}>
-                          <SelectValue data-ui="select-value-064" placeholder="전체" />
-                        </SelectTrigger>
-                        <SelectContent data-ui="select-content-065">
-                          <SelectItem data-ui="select-item-066" value="all">전체</SelectItem>
-                          <SelectItem data-ui="select-item-067" value="open">영업중만</SelectItem>
-                          <SelectItem data-ui="select-item-068" value="break">브레이크타임만</SelectItem>
-                          <SelectItem data-ui="select-item-069" value="closed">영업종료만</SelectItem>
-                          <SelectItem data-ui="select-item-070" value="unknown">계산불가/휴무만</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div data-ui="div-ref-open-mode-062" id="refOpenModeChips" className={CHIP_ROW_CLASS}>
+                        {REF_OPEN_MODE_PRESETS.map((preset, idx) => (
+                          <Button
+                            data-ui={`ref-open-mode-chip-${idx}-${preset.value}`}
+                            key={preset.value}
+                            type="button"
+                            size="sm"
+                            variant={preset.value === refOpenMode ? "default" : "outline"}
+                            onClick={() => setRefOpenMode(preset.value)}
+                          >
+                            {preset.label}
+                          </Button>
+                        ))}
+                      </div>
                     </Field>
 
                     <Field data-ui="field-071" className={FIELD_STACK_CLASS}>
@@ -1785,23 +1819,6 @@ function App() {
                           {topKeywordCatalog.map((item, idx) => (
                             <SelectItem data-ui={`top-keyword-option-${idx}-${uiToken(item.keyword)}`} key={item.keyword} value={item.keyword}>
                               {item.keyword} ({numFmt.format(item.count)})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </Field>
-
-                    <Field data-ui="field-price-category-201" className={FIELD_STACK_CLASS}>
-                      <FieldLabel data-ui="field-label-price-category-202" className="text-xs font-semibold text-muted-foreground">가격대</FieldLabel>
-                      <Select data-ui="select-price-category-203" value={priceCategoryFilter} onValueChange={setPriceCategoryFilter}>
-                        <SelectTrigger data-ui="select-trigger-price-category-204" id="priceCategoryFilter" className={`w-full ${ACTIVE_FIELD_CLASS}`}>
-                          <SelectValue data-ui="select-value-price-category-205" placeholder="전체" />
-                        </SelectTrigger>
-                        <SelectContent data-ui="select-content-price-category-206">
-                          <SelectItem data-ui="select-item-price-category-all-207" value="all">전체</SelectItem>
-                          {priceCategoryCatalog.map((item, idx) => (
-                            <SelectItem data-ui={`price-category-option-${idx}-${uiToken(item.category)}`} key={item.category} value={item.category}>
-                              {item.category} ({numFmt.format(item.count)})
                             </SelectItem>
                           ))}
                         </SelectContent>
