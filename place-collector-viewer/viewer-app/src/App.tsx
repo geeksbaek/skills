@@ -312,7 +312,7 @@ const CARD_CONTENT_CLASS = "min-w-0 px-4 py-0 md:px-5 xl:flex xl:min-h-0 xl:flex
 const PANEL_STACK_CLASS = "min-w-0 w-full max-w-full gap-4"
 const FIELD_STACK_CLASS = "min-w-0 flex flex-col gap-2"
 const CHIP_ROW_CLASS = "flex flex-wrap gap-2"
-const TWO_COL_GRID_CLASS = "grid gap-3 sm:grid-cols-2"
+const TWO_COL_GRID_CLASS = "grid gap-3 md:grid-cols-2"
 const ACTION_ROW_CLASS = "flex flex-wrap items-end gap-3"
 const MOBILE_ROW_CARD_CLASS = "space-y-3 rounded-lg border bg-card p-3"
 const CENTER_SEARCH_MIN_QUERY = 2
@@ -1154,6 +1154,12 @@ function App() {
   const [statusError, setStatusError] = useState<string | null>(null)
   const [convenienceDialogOpen, setConvenienceDialogOpen] = useState(false)
   const [advancedDialogOpen, setAdvancedDialogOpen] = useState(false)
+  const [mobileFilterDialogOpen, setMobileFilterDialogOpen] = useState(false)
+  const [isMobileViewport, setIsMobileViewport] = useState(
+    typeof window !== "undefined" && typeof window.matchMedia === "function"
+      ? window.matchMedia("(max-width: 767px)").matches
+      : false
+  )
   const [loading, setLoading] = useState(false)
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null)
@@ -1170,6 +1176,27 @@ function App() {
     const timer = window.setTimeout(() => setDebouncedSearch(searchInput), 200)
     return () => window.clearTimeout(timer)
   }, [searchInput])
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return
+    const mediaQuery = window.matchMedia("(max-width: 767px)")
+    const handleChange = (event: MediaQueryListEvent) => setIsMobileViewport(event.matches)
+    setIsMobileViewport(mediaQuery.matches)
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", handleChange)
+      return () => mediaQuery.removeEventListener("change", handleChange)
+    }
+
+    mediaQuery.addListener(handleChange)
+    return () => mediaQuery.removeListener(handleChange)
+  }, [])
+
+  useEffect(() => {
+    if (!isMobileViewport && mobileFilterDialogOpen) {
+      setMobileFilterDialogOpen(false)
+    }
+  }, [isMobileViewport, mobileFilterDialogOpen])
 
   const convenienceCatalog = useMemo(() => buildConvenienceCatalog(rows), [rows])
   const topKeywordCatalog = useMemo(() => buildTopKeywordCatalog(rows), [rows])
@@ -1820,6 +1847,290 @@ function App() {
     overscan: 10,
   })
 
+  const renderPrimaryFilterPanel = () => (
+    <FieldGroup data-ui="field-group-022" className={PANEL_STACK_CLASS}>
+      <Field data-ui="field-023" className={FIELD_STACK_CLASS}>
+        <FieldLabel data-ui="field-label-024" className="text-xs font-semibold text-muted-foreground">JSON 파일</FieldLabel>
+        <input ref={fileInputRef} type="file" accept=".json,application/json" className="hidden" onChange={handleFileChange} />
+        <Button data-ui="input-025" variant="outline" size="sm" className="w-full justify-start gap-2 text-left font-normal" onClick={() => fileInputRef.current?.click()}>
+          <FolderOpen className="size-4 shrink-0 text-muted-foreground" />
+          <span className="truncate">{selectedFileName ?? "파일을 선택하세요..."}</span>
+        </Button>
+      </Field>
+
+      <Field data-ui="field-embedded-dataset-301" className={FIELD_STACK_CLASS}>
+        <FieldLabel data-ui="field-label-embedded-dataset-302" className="text-xs font-semibold text-muted-foreground">내장 데이터셋</FieldLabel>
+        <div data-ui="embedded-dataset-row-303" className="flex items-center gap-2">
+          <Select
+            data-ui="embedded-dataset-select-304"
+            value={selectedEmbeddedDatasetId}
+            onValueChange={setSelectedEmbeddedDatasetId}
+          >
+            <SelectTrigger data-ui="embedded-dataset-trigger-305" className={`min-w-0 flex-1 ${ACTIVE_FIELD_CLASS}`}>
+              <SelectValue data-ui="embedded-dataset-value-306" placeholder="데이터셋 선택" />
+            </SelectTrigger>
+            <SelectContent data-ui="embedded-dataset-content-307">
+              {EMBEDDED_DATASETS.map((dataset, idx) => (
+                <SelectItem
+                  data-ui={`embedded-dataset-option-308-${idx}-${uiToken(dataset.id)}`}
+                  key={dataset.id}
+                  value={dataset.id}
+                >
+                  {dataset.label} ({formatBytesToLabel(dataset.jsonText.length)})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            data-ui="embedded-dataset-load-button-309"
+            type="button"
+            size="sm"
+            variant="outline"
+            className="shrink-0"
+            onClick={loadEmbeddedDataset}
+            disabled={!selectedEmbeddedDataset || loading}
+          >
+            불러오기
+          </Button>
+        </div>
+        <FieldDescription data-ui="embedded-dataset-desc-310" className="text-[11px] text-muted-foreground">
+          청담/광교/판교 JSON이 앱에 내장되어 있습니다.
+        </FieldDescription>
+      </Field>
+
+      <Field data-ui="field-026" className={FIELD_STACK_CLASS}>
+        <FieldLabel data-ui="field-label-027" className="text-xs font-semibold text-muted-foreground" htmlFor="searchInput">통합 검색</FieldLabel>
+        <Input data-ui="input-028"
+          className={ACTIVE_FIELD_CLASS}
+          id="searchInput"
+          value={searchInput}
+          onChange={(event) => setSearchInput(event.target.value)}
+          placeholder="예: 파스타, 주차, 광교중앙역"
+        />
+        <FieldDescription data-ui="field-desc-029" className="text-[11px] text-muted-foreground">
+          콤마(,)로 여러 키워드를 입력하면 OR 조건으로 검색합니다.
+        </FieldDescription>
+      </Field>
+
+      <Field data-ui="field-030" className={FIELD_STACK_CLASS}>
+        <FieldLabel data-ui="field-label-031" className="text-xs font-semibold text-muted-foreground">최소 리뷰 수</FieldLabel>
+        <div data-ui="div-032" className={CHIP_ROW_CLASS} id="minReviewsChips">
+          {MIN_REVIEW_PRESETS.map((preset) => (
+            <Button data-ui={`min-review-chip-${preset.value}`}
+              key={preset.value}
+              type="button"
+              size="sm"
+              variant={preset.value === minReviewPreset ? "default" : "outline"}
+              onClick={() => setMinReviewPreset(preset.value)}
+            >
+              {preset.label}
+            </Button>
+          ))}
+        </div>
+      </Field>
+
+      <Field data-ui="field-034" className={FIELD_STACK_CLASS}>
+        <FieldLabel data-ui="field-label-035" className="text-xs font-semibold text-muted-foreground">최대 거리(m)</FieldLabel>
+        <div data-ui="div-036" className={CHIP_ROW_CLASS} id="maxDistanceChips">
+          {MAX_DISTANCE_PRESETS.map((preset) => (
+            <Button data-ui={`max-distance-chip-${preset.value ?? "none"}`}
+              key={preset.label}
+              type="button"
+              size="sm"
+              variant={preset.value === maxDistancePreset ? "default" : "outline"}
+              onClick={() => setMaxDistancePreset(preset.value)}
+            >
+              {preset.label}
+            </Button>
+          ))}
+        </div>
+      </Field>
+
+      <Field data-ui="field-price-category-201" className={FIELD_STACK_CLASS}>
+        <FieldLabel data-ui="field-label-price-category-202" className="text-xs font-semibold text-muted-foreground">가격대</FieldLabel>
+        <div data-ui="div-price-category-203" id="priceCategoryChips" className={CHIP_ROW_CLASS}>
+          <Button
+            data-ui="price-category-chip-all-204"
+            type="button"
+            size="sm"
+            variant={priceCategoryFilter === "all" ? "default" : "outline"}
+            onClick={() => setPriceCategoryFilter("all")}
+          >
+            전체
+          </Button>
+          {priceEmojiCatalog.map((item, idx) => (
+            <Button
+              data-ui={`price-category-chip-${idx}-${uiToken(item.emoji)}`}
+              key={item.emoji}
+              type="button"
+              size="sm"
+              variant={item.emoji === priceCategoryFilter ? "default" : "outline"}
+              onClick={() => setPriceCategoryFilter(item.emoji)}
+              title={item.categories.join(", ")}
+            >
+              {item.emoji} ({numFmt.format(item.count)})
+            </Button>
+          ))}
+        </div>
+      </Field>
+
+      <Field data-ui="field-038" className={FIELD_STACK_CLASS}>
+        <FieldLabel data-ui="field-label-039" className="text-xs font-semibold text-muted-foreground" htmlFor="centerSearchSelectTrigger">
+          거리 기준 주소/건물명
+        </FieldLabel>
+        <Popover
+          data-ui="center-combobox-root"
+          open={centerSearchSelectOpen}
+          onOpenChange={(open) => {
+            setCenterSearchSelectOpen(open)
+            if (open && !centerSearchInput.trim()) {
+              setCenterSearchStatus({ message: "주소/건물명을 입력하면 자동으로 검색됩니다.", tone: "muted" })
+            }
+          }}
+        >
+          <PopoverTrigger data-ui="center-combobox-trigger-wrapper" asChild>
+            <Button
+              data-ui="center-combobox-trigger"
+              id="centerSearchSelectTrigger"
+              type="button"
+              variant="outline"
+              role="combobox"
+              aria-expanded={centerSearchSelectOpen}
+              className={`w-full min-w-0 max-w-full justify-between gap-2 overflow-hidden text-left ${ACTIVE_FIELD_CLASS}`}
+            >
+              <span
+                data-ui="center-combobox-trigger-label"
+                className={`block min-w-0 max-w-full flex-1 truncate ${selectedCenterSearchResult || centerSearchInput.trim() ? "" : "text-muted-foreground"}`}
+                title={centerComboboxLabel}
+              >
+                {centerComboboxLabel}
+              </span>
+              {centerSearchLoading ? (
+                <Loader2 data-ui="center-combobox-loading-icon" className="size-4 animate-spin opacity-70" />
+              ) : (
+                <ChevronsUpDown data-ui="center-combobox-toggle-icon" className="size-4 opacity-50" />
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            data-ui="center-combobox-content"
+            id="centerSearchOptions"
+            align="start"
+            className="w-[var(--radix-popover-trigger-width)] p-0"
+          >
+            <Command data-ui="center-combobox-command" shouldFilter={false}>
+              <CommandInput
+                data-ui="center-combobox-input"
+                id="centerSearchInput"
+                value={centerSearchInput}
+                onValueChange={setCenterSearchInput}
+                placeholder="예: 상현역, 광교호수공원"
+              />
+              <CommandList data-ui="center-combobox-list">
+                <CommandEmpty data-ui="center-combobox-empty">
+                  {centerSearchLoading
+                    ? "검색 중입니다..."
+                    : centerSearchInput.trim().length < CENTER_SEARCH_MIN_QUERY
+                      ? `${CENTER_SEARCH_MIN_QUERY}글자 이상 입력해 주세요.`
+                      : "검색 결과가 없습니다."}
+                </CommandEmpty>
+                <CommandGroup data-ui="center-combobox-group" heading={centerSearchResults.length ? "검색 결과" : undefined}>
+                  {centerSearchResults.map((item, idx) => (
+                    <CommandItem
+                      data-ui={`center-search-option-${uiToken(item.id)}`}
+                      key={item.id}
+                      value={item.id}
+                      onSelect={(value) => {
+                        if (applyCenterSearchResultById(value)) {
+                          setCenterSearchSelectOpen(false)
+                        }
+                      }}
+                    >
+                      <span data-ui={`center-search-option-label-${uiToken(item.id)}`} className="truncate">
+                        {toCenterSearchOptionText(item, idx)}
+                      </span>
+                      <Check
+                        data-ui={`center-search-option-check-${uiToken(item.id)}`}
+                        className={`ml-auto size-4 ${selectedCenterSearchResultId === item.id ? "opacity-100" : "opacity-0"}`}
+                      />
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+        <FieldDescription
+          data-ui="field-desc-center-status-208"
+          data-tone={centerSearchStatus.tone}
+          className={[
+            "text-[11px]",
+            centerSearchStatus.tone === "ok" ? "text-emerald-600" : "",
+            centerSearchStatus.tone === "warn" ? "text-red-600" : "",
+            centerSearchStatus.tone === "muted" ? "text-muted-foreground" : "",
+          ].join(" ")}
+        >
+          {centerSearchStatus.message}
+        </FieldDescription>
+      </Field>
+
+      <div data-ui="div-052" className={TWO_COL_GRID_CLASS}>
+        <Field data-ui="field-053" className={FIELD_STACK_CLASS}>
+          <FieldLabel data-ui="field-label-054" className="text-xs font-semibold text-muted-foreground" htmlFor="refDate">기준 날짜</FieldLabel>
+          <Input data-ui="input-055" className={`w-full ${ACTIVE_FIELD_CLASS}`} id="refDate" type="date" value={refDate} onChange={(event) => setRefDate(event.target.value)} />
+        </Field>
+        <Field data-ui="field-056" className={FIELD_STACK_CLASS}>
+          <FieldLabel data-ui="field-label-057" className="text-xs font-semibold text-muted-foreground" htmlFor="refTime">기준 시간</FieldLabel>
+          <Input data-ui="input-058" className={`w-full ${ACTIVE_FIELD_CLASS}`} id="refTime" type="time" step={60} value={refTime} onChange={(event) => setRefTime(event.target.value)} />
+        </Field>
+      </div>
+
+      <div data-ui="div-059" className="grid gap-3">
+        <Field data-ui="field-060" className={FIELD_STACK_CLASS}>
+          <FieldLabel data-ui="field-label-061" className="text-xs font-semibold text-muted-foreground">기준시각 영업 상태</FieldLabel>
+          <div data-ui="div-ref-open-mode-062" id="refOpenModeChips" className={CHIP_ROW_CLASS}>
+            {REF_OPEN_MODE_PRESETS.map((preset, idx) => (
+              <Button
+                data-ui={`ref-open-mode-chip-${idx}-${preset.value}`}
+                key={preset.value}
+                type="button"
+                size="sm"
+                variant={preset.value === refOpenMode ? "default" : "outline"}
+                onClick={() => setRefOpenMode(preset.value)}
+              >
+                {preset.label}
+              </Button>
+            ))}
+          </div>
+        </Field>
+      </div>
+
+      <Field data-ui="field-071" className={FIELD_STACK_CLASS}>
+        <FieldLabel data-ui="field-label-072" className="text-xs font-semibold text-muted-foreground">키워드 필터</FieldLabel>
+        <Select data-ui="select-073" value={topKeywordFilter} onValueChange={setTopKeywordFilter}>
+          <SelectTrigger data-ui="select-trigger-074" id="topKeywordFilter" className={`w-full ${ACTIVE_FIELD_CLASS}`}>
+            <SelectValue data-ui="select-value-075" placeholder="전체" />
+          </SelectTrigger>
+          <SelectContent data-ui="select-content-076">
+            <SelectItem data-ui="select-item-077" value="all">전체</SelectItem>
+            {topKeywordCatalog.map((item, idx) => (
+              <SelectItem data-ui={`top-keyword-option-${idx}-${uiToken(item.keyword)}`} key={item.keyword} value={item.keyword}>
+                {item.keyword} (가게 {numFmt.format(item.placeCount)} / 언급 {numFmt.format(item.mentionCount)})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <FieldDescription data-ui="field-desc-top-keyword-078" className="text-[11px] text-muted-foreground">
+          최상위 키워드가 아니어도 해당 키워드가 있으면 포함합니다.
+        </FieldDescription>
+      </Field>
+
+      <Button data-ui="button-079" id="resetBtn" type="button" variant="outline" size="sm" className="w-full" onClick={resetFilters}>
+        <RotateCcw data-ui="rotate-ccw-080" className="size-4" /> 필터 초기화
+      </Button>
+    </FieldGroup>
+  )
+
   return (
     <TooltipProvider>
     <div data-ui="div-006" className={APP_SURFACE_CLASS}>
@@ -1833,298 +2144,19 @@ function App() {
       )}
       <div data-ui="div-007" className={APP_CONTENT_CLASS}>
         <div data-ui="div-018" className={APP_GRID_CLASS}>
-          <Card data-ui="card-019" className="border-slate-200/80 shadow-xl shadow-slate-900/5 xl:flex xl:h-full xl:min-h-0 xl:flex-col">
-            <CardContent data-ui="card-content-020" className={CARD_CONTENT_CLASS}>
-              <ScrollArea
-                data-ui="scroll-area-021"
-                className="h-[min(72vh,860px)] w-full min-w-0 xl:h-full"
-                viewportClassName="[&>div]:!block [&>div]:!w-full [&>div]:!min-w-0"
-              >
-                <FieldGroup data-ui="field-group-022" className={PANEL_STACK_CLASS}>
-                  <Field data-ui="field-023" className={FIELD_STACK_CLASS}>
-                    <FieldLabel data-ui="field-label-024" className="text-xs font-semibold text-muted-foreground">JSON 파일</FieldLabel>
-                    <input ref={fileInputRef} type="file" accept=".json,application/json" className="hidden" onChange={handleFileChange} />
-                    <Button data-ui="input-025" variant="outline" size="sm" className="w-full justify-start gap-2 text-left font-normal" onClick={() => fileInputRef.current?.click()}>
-                      <FolderOpen className="size-4 shrink-0 text-muted-foreground" />
-                      <span className="truncate">{selectedFileName ?? "파일을 선택하세요..."}</span>
-                    </Button>
-                  </Field>
-
-                  <Field data-ui="field-embedded-dataset-301" className={FIELD_STACK_CLASS}>
-                    <FieldLabel data-ui="field-label-embedded-dataset-302" className="text-xs font-semibold text-muted-foreground">내장 데이터셋</FieldLabel>
-                    <div data-ui="embedded-dataset-row-303" className="flex items-center gap-2">
-                      <Select
-                        data-ui="embedded-dataset-select-304"
-                        value={selectedEmbeddedDatasetId}
-                        onValueChange={setSelectedEmbeddedDatasetId}
-                      >
-                        <SelectTrigger data-ui="embedded-dataset-trigger-305" className={`min-w-0 flex-1 ${ACTIVE_FIELD_CLASS}`}>
-                          <SelectValue data-ui="embedded-dataset-value-306" placeholder="데이터셋 선택" />
-                        </SelectTrigger>
-                        <SelectContent data-ui="embedded-dataset-content-307">
-                          {EMBEDDED_DATASETS.map((dataset, idx) => (
-                            <SelectItem
-                              data-ui={`embedded-dataset-option-308-${idx}-${uiToken(dataset.id)}`}
-                              key={dataset.id}
-                              value={dataset.id}
-                            >
-                              {dataset.label} ({formatBytesToLabel(dataset.jsonText.length)})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        data-ui="embedded-dataset-load-button-309"
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="shrink-0"
-                        onClick={loadEmbeddedDataset}
-                        disabled={!selectedEmbeddedDataset || loading}
-                      >
-                        불러오기
-                      </Button>
-                    </div>
-                    <FieldDescription data-ui="embedded-dataset-desc-310" className="text-[11px] text-muted-foreground">
-                      청담/광교/판교 JSON이 앱에 내장되어 있습니다.
-                    </FieldDescription>
-                  </Field>
-
-                  <Field data-ui="field-026" className={FIELD_STACK_CLASS}>
-                    <FieldLabel data-ui="field-label-027" className="text-xs font-semibold text-muted-foreground" htmlFor="searchInput">통합 검색</FieldLabel>
-                    <Input data-ui="input-028"
-                      className={ACTIVE_FIELD_CLASS}
-                      id="searchInput"
-                      value={searchInput}
-                      onChange={(event) => setSearchInput(event.target.value)}
-                      placeholder="예: 파스타, 주차, 광교중앙역"
-                    />
-                    <FieldDescription data-ui="field-desc-029" className="text-[11px] text-muted-foreground">
-                      콤마(,)로 여러 키워드를 입력하면 OR 조건으로 검색합니다.
-                    </FieldDescription>
-                  </Field>
-
-                  <Field data-ui="field-030" className={FIELD_STACK_CLASS}>
-                    <FieldLabel data-ui="field-label-031" className="text-xs font-semibold text-muted-foreground">최소 리뷰 수</FieldLabel>
-                    <div data-ui="div-032" className={CHIP_ROW_CLASS} id="minReviewsChips">
-                      {MIN_REVIEW_PRESETS.map((preset) => (
-                        <Button data-ui={`min-review-chip-${preset.value}`}
-                          key={preset.value}
-                          type="button"
-                          size="sm"
-                          variant={preset.value === minReviewPreset ? "default" : "outline"}
-                          onClick={() => setMinReviewPreset(preset.value)}
-                        >
-                          {preset.label}
-                        </Button>
-                      ))}
-                    </div>
-                  </Field>
-
-                  <Field data-ui="field-034" className={FIELD_STACK_CLASS}>
-                    <FieldLabel data-ui="field-label-035" className="text-xs font-semibold text-muted-foreground">최대 거리(m)</FieldLabel>
-                    <div data-ui="div-036" className={CHIP_ROW_CLASS} id="maxDistanceChips">
-                      {MAX_DISTANCE_PRESETS.map((preset) => (
-                        <Button data-ui={`max-distance-chip-${preset.value ?? "none"}`}
-                          key={preset.label}
-                          type="button"
-                          size="sm"
-                          variant={preset.value === maxDistancePreset ? "default" : "outline"}
-                          onClick={() => setMaxDistancePreset(preset.value)}
-                        >
-                          {preset.label}
-                        </Button>
-                      ))}
-                    </div>
-                  </Field>
-
-                  <Field data-ui="field-price-category-201" className={FIELD_STACK_CLASS}>
-                    <FieldLabel data-ui="field-label-price-category-202" className="text-xs font-semibold text-muted-foreground">가격대</FieldLabel>
-                    <div data-ui="div-price-category-203" id="priceCategoryChips" className={CHIP_ROW_CLASS}>
-                      <Button
-                        data-ui="price-category-chip-all-204"
-                        type="button"
-                        size="sm"
-                        variant={priceCategoryFilter === "all" ? "default" : "outline"}
-                        onClick={() => setPriceCategoryFilter("all")}
-                      >
-                        전체
-                      </Button>
-                      {priceEmojiCatalog.map((item, idx) => (
-                        <Button
-                          data-ui={`price-category-chip-${idx}-${uiToken(item.emoji)}`}
-                          key={item.emoji}
-                          type="button"
-                          size="sm"
-                          variant={item.emoji === priceCategoryFilter ? "default" : "outline"}
-                          onClick={() => setPriceCategoryFilter(item.emoji)}
-                          title={item.categories.join(", ")}
-                        >
-                          {item.emoji} ({numFmt.format(item.count)})
-                        </Button>
-                      ))}
-                    </div>
-                  </Field>
-
-                  <Field data-ui="field-038" className={FIELD_STACK_CLASS}>
-                    <FieldLabel data-ui="field-label-039" className="text-xs font-semibold text-muted-foreground" htmlFor="centerSearchSelectTrigger">
-                      거리 기준 주소/건물명
-                    </FieldLabel>
-                    <Popover
-                      data-ui="center-combobox-root"
-                      open={centerSearchSelectOpen}
-                      onOpenChange={(open) => {
-                        setCenterSearchSelectOpen(open)
-                        if (open && !centerSearchInput.trim()) {
-                          setCenterSearchStatus({ message: "주소/건물명을 입력하면 자동으로 검색됩니다.", tone: "muted" })
-                        }
-                      }}
-                    >
-                      <PopoverTrigger data-ui="center-combobox-trigger-wrapper" asChild>
-                        <Button
-                          data-ui="center-combobox-trigger"
-                          id="centerSearchSelectTrigger"
-                          type="button"
-                          variant="outline"
-                          role="combobox"
-                          aria-expanded={centerSearchSelectOpen}
-                          className={`w-full min-w-0 max-w-full justify-between gap-2 overflow-hidden text-left ${ACTIVE_FIELD_CLASS}`}
-                        >
-                          <span
-                            data-ui="center-combobox-trigger-label"
-                            className={`block min-w-0 max-w-full flex-1 truncate ${selectedCenterSearchResult || centerSearchInput.trim() ? "" : "text-muted-foreground"}`}
-                            title={centerComboboxLabel}
-                          >
-                            {centerComboboxLabel}
-                          </span>
-                          {centerSearchLoading ? (
-                            <Loader2 data-ui="center-combobox-loading-icon" className="size-4 animate-spin opacity-70" />
-                          ) : (
-                            <ChevronsUpDown data-ui="center-combobox-toggle-icon" className="size-4 opacity-50" />
-                          )}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent
-                        data-ui="center-combobox-content"
-                        id="centerSearchOptions"
-                        align="start"
-                        className="w-[var(--radix-popover-trigger-width)] p-0"
-                      >
-                        <Command data-ui="center-combobox-command" shouldFilter={false}>
-                          <CommandInput
-                            data-ui="center-combobox-input"
-                            id="centerSearchInput"
-                            value={centerSearchInput}
-                            onValueChange={setCenterSearchInput}
-                            placeholder="예: 상현역, 광교호수공원"
-                          />
-                          <CommandList data-ui="center-combobox-list">
-                            <CommandEmpty data-ui="center-combobox-empty">
-                              {centerSearchLoading
-                                ? "검색 중입니다..."
-                                : centerSearchInput.trim().length < CENTER_SEARCH_MIN_QUERY
-                                  ? `${CENTER_SEARCH_MIN_QUERY}글자 이상 입력해 주세요.`
-                                  : "검색 결과가 없습니다."}
-                            </CommandEmpty>
-                            <CommandGroup data-ui="center-combobox-group" heading={centerSearchResults.length ? "검색 결과" : undefined}>
-                              {centerSearchResults.map((item, idx) => (
-                                <CommandItem
-                                  data-ui={`center-search-option-${uiToken(item.id)}`}
-                                  key={item.id}
-                                  value={item.id}
-                                  onSelect={(value) => {
-                                    if (applyCenterSearchResultById(value)) {
-                                      setCenterSearchSelectOpen(false)
-                                    }
-                                  }}
-                                >
-                                  <span data-ui={`center-search-option-label-${uiToken(item.id)}`} className="truncate">
-                                    {toCenterSearchOptionText(item, idx)}
-                                  </span>
-                                  <Check
-                                    data-ui={`center-search-option-check-${uiToken(item.id)}`}
-                                    className={`ml-auto size-4 ${selectedCenterSearchResultId === item.id ? "opacity-100" : "opacity-0"}`}
-                                  />
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                    <FieldDescription
-                      data-ui="field-desc-center-status-208"
-                      data-tone={centerSearchStatus.tone}
-                      className={[
-                        "text-[11px]",
-                        centerSearchStatus.tone === "ok" ? "text-emerald-600" : "",
-                        centerSearchStatus.tone === "warn" ? "text-red-600" : "",
-                        centerSearchStatus.tone === "muted" ? "text-muted-foreground" : "",
-                      ].join(" ")}
-                    >
-                      {centerSearchStatus.message}
-                    </FieldDescription>
-                  </Field>
-
-                  <div data-ui="div-052" className={TWO_COL_GRID_CLASS}>
-                    <Field data-ui="field-053" className={FIELD_STACK_CLASS}>
-                      <FieldLabel data-ui="field-label-054" className="text-xs font-semibold text-muted-foreground" htmlFor="refDate">기준 날짜</FieldLabel>
-                      <Input data-ui="input-055" className={ACTIVE_FIELD_CLASS} id="refDate" type="date" value={refDate} onChange={(event) => setRefDate(event.target.value)} />
-                    </Field>
-                    <Field data-ui="field-056" className={FIELD_STACK_CLASS}>
-                      <FieldLabel data-ui="field-label-057" className="text-xs font-semibold text-muted-foreground" htmlFor="refTime">기준 시간</FieldLabel>
-                      <Input data-ui="input-058" className={ACTIVE_FIELD_CLASS} id="refTime" type="time" step={60} value={refTime} onChange={(event) => setRefTime(event.target.value)} />
-                    </Field>
-                  </div>
-
-                  <div data-ui="div-059" className="grid gap-3">
-                    <Field data-ui="field-060" className={FIELD_STACK_CLASS}>
-                      <FieldLabel data-ui="field-label-061" className="text-xs font-semibold text-muted-foreground">기준시각 영업 상태</FieldLabel>
-                      <div data-ui="div-ref-open-mode-062" id="refOpenModeChips" className={CHIP_ROW_CLASS}>
-                        {REF_OPEN_MODE_PRESETS.map((preset, idx) => (
-                          <Button
-                            data-ui={`ref-open-mode-chip-${idx}-${preset.value}`}
-                            key={preset.value}
-                            type="button"
-                            size="sm"
-                            variant={preset.value === refOpenMode ? "default" : "outline"}
-                            onClick={() => setRefOpenMode(preset.value)}
-                          >
-                            {preset.label}
-                          </Button>
-                        ))}
-                      </div>
-                    </Field>
-                  </div>
-
-                  <Field data-ui="field-071" className={FIELD_STACK_CLASS}>
-                    <FieldLabel data-ui="field-label-072" className="text-xs font-semibold text-muted-foreground">키워드 필터</FieldLabel>
-                    <Select data-ui="select-073" value={topKeywordFilter} onValueChange={setTopKeywordFilter}>
-                      <SelectTrigger data-ui="select-trigger-074" id="topKeywordFilter" className={`w-full ${ACTIVE_FIELD_CLASS}`}>
-                        <SelectValue data-ui="select-value-075" placeholder="전체" />
-                      </SelectTrigger>
-                      <SelectContent data-ui="select-content-076">
-                        <SelectItem data-ui="select-item-077" value="all">전체</SelectItem>
-                        {topKeywordCatalog.map((item, idx) => (
-                          <SelectItem data-ui={`top-keyword-option-${idx}-${uiToken(item.keyword)}`} key={item.keyword} value={item.keyword}>
-                            {item.keyword} (가게 {numFmt.format(item.placeCount)} / 언급 {numFmt.format(item.mentionCount)})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FieldDescription data-ui="field-desc-top-keyword-078" className="text-[11px] text-muted-foreground">
-                      최상위 키워드가 아니어도 해당 키워드가 있으면 포함합니다.
-                    </FieldDescription>
-                  </Field>
-
-                  <Button data-ui="button-079" id="resetBtn" type="button" variant="outline" size="sm" className="w-full" onClick={resetFilters}>
-                    <RotateCcw data-ui="rotate-ccw-080" className="size-4" /> 필터 초기화
-                  </Button>
-
-                </FieldGroup>
-              </ScrollArea>
-            </CardContent>
-          </Card>
+          {!isMobileViewport ? (
+            <Card data-ui="card-019" className="border-slate-200/80 shadow-xl shadow-slate-900/5 xl:flex xl:h-full xl:min-h-0 xl:flex-col">
+              <CardContent data-ui="card-content-020" className={CARD_CONTENT_CLASS}>
+                <ScrollArea
+                  data-ui="scroll-area-021"
+                  className="h-[min(72vh,860px)] w-full min-w-0 xl:h-full"
+                  viewportClassName="[&>div]:!block [&>div]:!w-full [&>div]:!min-w-0"
+                >
+                  {renderPrimaryFilterPanel()}
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          ) : null}
 
           <Card data-ui="card-140" className="border-slate-200/80 shadow-xl shadow-slate-900/5 xl:flex xl:h-full xl:min-h-0 xl:flex-col">
             <CardHeader data-ui="card-header-141" className={CARD_HEADER_CLASS}>
@@ -2168,6 +2200,32 @@ function App() {
                 </div>
 
                 <div data-ui="dialog-filter-trigger-group" className="flex flex-wrap gap-2">
+                  {isMobileViewport ? (
+                    <Dialog data-ui="dialog-mobile-filter-root" open={mobileFilterDialogOpen} onOpenChange={setMobileFilterDialogOpen}>
+                      <DialogTrigger data-ui="dialog-mobile-filter-trigger-wrap" asChild>
+                        <Button data-ui="dialog-mobile-filter-trigger" type="button" variant="outline" className="gap-2">
+                          <SlidersHorizontal data-ui="dialog-mobile-filter-trigger-icon" className="size-4" />
+                          필터
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent data-ui="dialog-mobile-filter-content" className="w-[min(96vw,760px)] max-w-[760px] p-0">
+                        <DialogHeader data-ui="dialog-mobile-filter-header" className="space-y-2 border-b px-5 py-4">
+                          <DialogTitle data-ui="dialog-mobile-filter-title">필터</DialogTitle>
+                          <DialogDescription data-ui="dialog-mobile-filter-description">
+                            검색/거리/시간 기준 필터를 설정합니다.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <ScrollArea
+                          data-ui="dialog-mobile-filter-scroll-area"
+                          className="max-h-[78vh] px-5 py-4"
+                          viewportClassName="[&>div]:!block [&>div]:!w-full [&>div]:!min-w-0"
+                        >
+                          {renderPrimaryFilterPanel()}
+                        </ScrollArea>
+                      </DialogContent>
+                    </Dialog>
+                  ) : null}
+
                   <Dialog data-ui="dialog-convenience-root" open={convenienceDialogOpen} onOpenChange={setConvenienceDialogOpen}>
                     <DialogTrigger data-ui="dialog-convenience-trigger-wrap" asChild>
                       <Button data-ui="dialog-convenience-trigger" type="button" variant="outline" className="gap-2">
