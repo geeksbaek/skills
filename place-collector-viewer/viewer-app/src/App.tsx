@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   Check,
   ChevronsUpDown,
+  ExternalLink,
   FolderOpen,
   Loader2,
   RotateCcw,
@@ -281,6 +282,8 @@ const PET_FEED_KEYWORDS = [
   "고양이",
   "펫",
 ]
+const TAKEOUT_FEED_KEYWORDS = ["포장", "테이크아웃", "takeout"]
+const TOOLTIP_INDICATOR_CLASS = "cursor-help underline decoration-dotted underline-offset-4 decoration-slate-400/80"
 
 const DEFAULT_MIN_REVIEW = 50
 const DEFAULT_MAX_DISTANCE: number | null = null
@@ -1457,8 +1460,15 @@ function App() {
       const name = row.name || "(이름 없음)"
       if (row.mapUrl) {
         return (
-          <a data-ui="a-001" className="text-primary hover:underline" href={row.mapUrl} target="_blank" rel="noreferrer noopener">
-            {name}
+          <a
+            data-ui="a-001"
+            className="inline-flex items-center gap-1 font-semibold text-primary underline decoration-primary/60 underline-offset-4 transition-colors hover:text-primary/90 hover:decoration-primary"
+            href={row.mapUrl}
+            target="_blank"
+            rel="noreferrer noopener"
+          >
+            <span data-ui={`table-name-link-label-${uiToken(row.id)}`} className="truncate">{name}</span>
+            <ExternalLink data-ui={`table-name-link-icon-${uiToken(row.id)}`} className="size-3 shrink-0 opacity-70" />
           </a>
         )
       }
@@ -1530,7 +1540,25 @@ function App() {
           classNames.push("text-muted-foreground font-semibold")
         }
       }
-      const cellContent = <span data-ui={`table-cell-content-${uiToken(row.id)}-${uiToken(column.key)}`} className={classNames.join(" ")}>{renderCell(row.original, column)}</span>
+      const cellValue = renderCell(row.original, column)
+      const inlineClassNames = classNames.filter((className) => className !== "block" && className !== "text-center")
+      const cellContent = <span data-ui={`table-cell-content-${uiToken(row.id)}-${uiToken(column.key)}`} className={classNames.join(" ")}>{cellValue}</span>
+      const tooltipAnchorContent = (
+        <span
+          data-ui={`table-cell-tooltip-anchor-${uiToken(row.id)}-${uiToken(column.key)}`}
+          className={["block w-fit max-w-full mx-auto", ...inlineClassNames, "cursor-help"].join(" ")}
+        >
+          {cellValue}
+        </span>
+      )
+      const tooltipIndicatorContent = (
+        <span
+          data-ui={`table-cell-tooltip-indicator-${uiToken(row.id)}-${uiToken(column.key)}`}
+          className={["block w-fit max-w-full mx-auto", ...inlineClassNames, TOOLTIP_INDICATOR_CLASS].join(" ")}
+        >
+          {cellValue}
+        </span>
+      )
 
       if (column.key === "openAtRefRank") {
         const tooltipLines = formatDetailHours(rawMapRef.current.get(row.original._index))
@@ -1538,7 +1566,7 @@ function App() {
           return (
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="cursor-help">{cellContent}</span>
+                {tooltipAnchorContent}
               </TooltipTrigger>
               <TooltipContent side="left" className="whitespace-pre text-left font-mono text-[11px] leading-relaxed">
                 {tooltipLines.join("\n")}
@@ -1567,10 +1595,29 @@ function App() {
           return (
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="cursor-help">{cellContent}</span>
+                {tooltipIndicatorContent}
               </TooltipTrigger>
               <TooltipContent side="top" className="max-w-sm whitespace-pre-wrap text-left text-xs leading-relaxed">
                 {petTip}
+              </TooltipContent>
+            </Tooltip>
+          )
+        }
+      }
+
+      if (column.key === "hasTakeoutOption" && row.original.hasTakeoutOption) {
+        let takeoutTip = extractFeedTooltipByKeywords(rawMapRef.current.get(row.original._index), TAKEOUT_FEED_KEYWORDS, 1)
+        if (!takeoutTip && row.original.options.includes("포장")) {
+          takeoutTip = "옵션 정보: 포장"
+        }
+        if (takeoutTip) {
+          return (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                {tooltipIndicatorContent}
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-sm whitespace-pre-wrap text-left text-xs leading-relaxed">
+                {takeoutTip}
               </TooltipContent>
             </Tooltip>
           )
@@ -1586,7 +1633,7 @@ function App() {
           return (
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="cursor-help">{cellContent}</span>
+                {tooltipIndicatorContent}
               </TooltipTrigger>
               <TooltipContent side="top" className="max-w-sm whitespace-pre-wrap text-left text-xs leading-relaxed">
                 {parkingTip}
@@ -2151,8 +2198,15 @@ function App() {
                         >
                           <div data-ui={`mobile-row-header-${uiToken(rowModel.id)}`} className="flex items-start justify-between gap-2">
                             {row.mapUrl ? (
-                              <a data-ui={`mobile-row-name-link-${uiToken(rowModel.id)}`} className="font-semibold text-primary hover:underline" href={row.mapUrl} target="_blank" rel="noreferrer noopener">
-                                {row.name || "(이름 없음)"}
+                              <a
+                                data-ui={`mobile-row-name-link-${uiToken(rowModel.id)}`}
+                                className="inline-flex items-center gap-1 font-semibold text-primary underline decoration-primary/60 underline-offset-4 transition-colors hover:text-primary/90 hover:decoration-primary"
+                                href={row.mapUrl}
+                                target="_blank"
+                                rel="noreferrer noopener"
+                              >
+                                <span data-ui={`mobile-row-name-link-label-${uiToken(rowModel.id)}`}>{row.name || "(이름 없음)"}</span>
+                                <ExternalLink data-ui={`mobile-row-name-link-icon-${uiToken(rowModel.id)}`} className="size-3 shrink-0 opacity-70" />
                               </a>
                             ) : (
                               <span data-ui={`mobile-row-name-text-${uiToken(rowModel.id)}`} className="font-semibold">{row.name || "(이름 없음)"}</span>
