@@ -2207,32 +2207,34 @@ function App() {
                       <div data-ui="div-144" className="text-sm text-muted-foreground">
                         데이터 <strong data-ui="strong-145">{numFmt.format(viewRows.length)}</strong> / {numFmt.format(rows.length)}개
                       </div>
-                      <div data-ui="div-146" className={CHIP_ROW_CLASS}>
-                        {statusBadges.length ? (
-                          statusBadges.map((label, idx) => (
-                            <Badge data-ui={`status-badge-${idx}-${uiToken(label)}`} key={label} variant="secondary">{label}</Badge>
-                          ))
-                        ) : (
-                          <Badge data-ui="badge-148" variant="outline">필터 없음</Badge>
-                        )}
-                        {sorting.map((item, idx) => {
-                          const col = visibleColumns.find((c) => String(c.key) === item.id)
-                          return (
-                            <Badge data-ui={`sort-chip-${idx}-${uiToken(item.id)}`} key={item.id} variant="secondary" className="gap-2">
-                              {idx + 1}. {col ? col.label : item.id} {item.desc ? "▼" : "▲"}
-                              <Button data-ui={`sort-chip-remove-${idx}-${uiToken(item.id)}`}
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="size-5 text-destructive hover:text-destructive"
-                                onClick={() => setSorting((prev) => prev.filter((rule) => rule.id !== item.id))}
-                              >
-                                <X data-ui={`sort-chip-remove-icon-${idx}-${uiToken(item.id)}`} className="size-3" />
-                              </Button>
-                            </Badge>
-                          )
-                        })}
-                      </div>
+                      {!isCompactViewport ? (
+                        <div data-ui="div-146" className={CHIP_ROW_CLASS}>
+                          {statusBadges.length ? (
+                            statusBadges.map((label, idx) => (
+                              <Badge data-ui={`status-badge-${idx}-${uiToken(label)}`} key={label} variant="secondary">{label}</Badge>
+                            ))
+                          ) : (
+                            <Badge data-ui="badge-148" variant="outline">필터 없음</Badge>
+                          )}
+                          {sorting.map((item, idx) => {
+                            const col = visibleColumns.find((c) => String(c.key) === item.id)
+                            return (
+                              <Badge data-ui={`sort-chip-${idx}-${uiToken(item.id)}`} key={item.id} variant="secondary" className="gap-2">
+                                {idx + 1}. {col ? col.label : item.id} {item.desc ? "▼" : "▲"}
+                                <Button data-ui={`sort-chip-remove-${idx}-${uiToken(item.id)}`}
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="size-5 text-destructive hover:text-destructive"
+                                  onClick={() => setSorting((prev) => prev.filter((rule) => rule.id !== item.id))}
+                                >
+                                  <X data-ui={`sort-chip-remove-icon-${idx}-${uiToken(item.id)}`} className="size-3" />
+                                </Button>
+                              </Badge>
+                            )
+                          })}
+                        </div>
+                      ) : null}
                     </>
                   )}
                 </div>
