@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   Check,
   ChevronsUpDown,
@@ -300,6 +300,7 @@ const PET_FEED_KEYWORDS = [
 ]
 const TAKEOUT_FEED_KEYWORDS = ["포장", "테이크아웃", "takeout"]
 const TOOLTIP_INDICATOR_CLASS = "cursor-help underline decoration-dotted underline-offset-4 decoration-slate-400/80"
+const TOOLTIP_TRIGGER_BUTTON_CLASS = "appearance-none border-0 bg-transparent p-0 font-inherit text-inherit focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 rounded-sm"
 
 const DEFAULT_MIN_REVIEW = 50
 const DEFAULT_MAX_DISTANCE: number | null = null
@@ -1678,6 +1679,45 @@ function App() {
     return toText(row[column.key]) || "-"
   }
 
+  const renderResponsiveTableHint = (
+    trigger: ReactNode,
+    content: ReactNode,
+    {
+      side = "top",
+      className,
+      dataUiSuffix,
+    }: {
+      side?: "top" | "bottom" | "left" | "right"
+      className: string
+      dataUiSuffix: string
+    }
+  ) => {
+    if (isCompactViewport) {
+      const compactSide = side === "left" || side === "right" ? "top" : side
+      return (
+        <Popover data-ui={`popover-table-hint-root-${dataUiSuffix}`}>
+          <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+          <PopoverContent
+            data-ui={`popover-table-hint-content-${dataUiSuffix}`}
+            side={compactSide}
+            className={className}
+          >
+            {content}
+          </PopoverContent>
+        </Popover>
+      )
+    }
+
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{trigger}</TooltipTrigger>
+        <TooltipContent data-ui={`tooltip-table-hint-content-${dataUiSuffix}`} side={side} className={className}>
+          {content}
+        </TooltipContent>
+      </Tooltip>
+    )
+  }
+
   const desktopTableColumns: TanstackColumnDef<PlaceRow>[] = visibleColumns.map((column) => ({
     id: String(column.key),
     accessorFn: (row) => {
@@ -1734,48 +1774,44 @@ function App() {
       const inlineClassNames = classNames.filter((className) => className !== "block" && className !== "text-center")
       const cellContent = <span data-ui={`table-cell-content-${uiToken(row.id)}-${uiToken(column.key)}`} className={classNames.join(" ")}>{cellValue}</span>
       const tooltipAnchorContent = (
-        <span
+        <button
+          type="button"
           data-ui={`table-cell-tooltip-anchor-${uiToken(row.id)}-${uiToken(column.key)}`}
-          className={["block w-fit max-w-full mx-auto", ...inlineClassNames, "cursor-help"].join(" ")}
+          className={["block w-fit max-w-full mx-auto", ...inlineClassNames, "cursor-help", TOOLTIP_TRIGGER_BUTTON_CLASS].join(" ")}
         >
           {cellValue}
-        </span>
+        </button>
       )
       const tooltipIndicatorContent = (
-        <span
+        <button
+          type="button"
           data-ui={`table-cell-tooltip-indicator-${uiToken(row.id)}-${uiToken(column.key)}`}
-          className={["block w-fit max-w-full mx-auto", ...inlineClassNames, TOOLTIP_INDICATOR_CLASS].join(" ")}
+          className={["block w-fit max-w-full mx-auto", ...inlineClassNames, TOOLTIP_INDICATOR_CLASS, TOOLTIP_TRIGGER_BUTTON_CLASS].join(" ")}
         >
           {cellValue}
-        </span>
+        </button>
       )
 
       if (column.key === "openAtRefRank") {
         const tooltipLines = formatDetailHours(rawMapRef.current.get(row.original._index))
         if (tooltipLines.length) {
           return (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                {tooltipAnchorContent}
-              </TooltipTrigger>
-              <TooltipContent side="left" className="whitespace-pre text-left font-mono text-[11px] leading-relaxed">
-                {tooltipLines.join("\n")}
-              </TooltipContent>
-            </Tooltip>
+            renderResponsiveTableHint(tooltipAnchorContent, tooltipLines.join("\n"), {
+              side: "left",
+              className: "w-fit max-w-sm whitespace-pre text-left font-mono text-[11px] leading-relaxed px-3 py-1.5",
+              dataUiSuffix: `open-at-ref-${uiToken(row.id)}-${uiToken(column.key)}`,
+            })
           )
         }
       }
 
       if (column.key === "priceCategory" && row.original.priceCategory) {
         return (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="cursor-help">{cellContent}</span>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="text-xs">
-              {row.original.priceCategory}
-            </TooltipContent>
-          </Tooltip>
+          renderResponsiveTableHint(tooltipAnchorContent, row.original.priceCategory, {
+            side: "top",
+            className: "w-fit max-w-sm text-xs px-3 py-1.5",
+            dataUiSuffix: `price-category-${uiToken(row.id)}-${uiToken(column.key)}`,
+          })
         )
       }
 
@@ -1783,14 +1819,11 @@ function App() {
         const petTip = extractFeedTooltipByKeywords(rawMapRef.current.get(row.original._index), PET_FEED_KEYWORDS, 4)
         if (petTip) {
           return (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                {tooltipIndicatorContent}
-              </TooltipTrigger>
-              <TooltipContent side="top" className="max-w-sm whitespace-pre-wrap text-left text-xs leading-relaxed">
-                {petTip}
-              </TooltipContent>
-            </Tooltip>
+            renderResponsiveTableHint(tooltipIndicatorContent, petTip, {
+              side: "top",
+              className: "w-fit max-w-sm whitespace-pre-wrap text-left text-xs leading-relaxed px-3 py-1.5",
+              dataUiSuffix: `pet-friendly-${uiToken(row.id)}-${uiToken(column.key)}`,
+            })
           )
         }
       }
@@ -1802,14 +1835,11 @@ function App() {
         }
         if (takeoutTip) {
           return (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                {tooltipIndicatorContent}
-              </TooltipTrigger>
-              <TooltipContent side="top" className="max-w-sm whitespace-pre-wrap text-left text-xs leading-relaxed">
-                {takeoutTip}
-              </TooltipContent>
-            </Tooltip>
+            renderResponsiveTableHint(tooltipIndicatorContent, takeoutTip, {
+              side: "top",
+              className: "w-fit max-w-sm whitespace-pre-wrap text-left text-xs leading-relaxed px-3 py-1.5",
+              dataUiSuffix: `takeout-${uiToken(row.id)}-${uiToken(column.key)}`,
+            })
           )
         }
       }
@@ -1821,14 +1851,11 @@ function App() {
         }
         if (parkingTip) {
           return (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                {tooltipIndicatorContent}
-              </TooltipTrigger>
-              <TooltipContent side="top" className="max-w-sm whitespace-pre-wrap text-left text-xs leading-relaxed">
-                {parkingTip}
-              </TooltipContent>
-            </Tooltip>
+            renderResponsiveTableHint(tooltipIndicatorContent, parkingTip, {
+              side: "top",
+              className: "w-fit max-w-sm whitespace-pre-wrap text-left text-xs leading-relaxed px-3 py-1.5",
+              dataUiSuffix: `parking-${uiToken(row.id)}-${uiToken(column.key)}`,
+            })
           )
         }
       }
@@ -2211,6 +2238,30 @@ function App() {
                 </div>
 
                 <div data-ui="dialog-filter-trigger-group" className="flex flex-wrap gap-2">
+                  {isTabletViewport ? (
+                    <div data-ui="tablet-top-keyword-inline-401" className="flex min-w-[260px] items-center gap-2">
+                      <span data-ui="tablet-top-keyword-inline-label-402" className="shrink-0 text-xs font-semibold text-muted-foreground">
+                        키워드
+                      </span>
+                      <Select data-ui="select-tablet-top-keyword-403" value={topKeywordFilter} onValueChange={setTopKeywordFilter}>
+                        <SelectTrigger data-ui="select-trigger-tablet-top-keyword-404" className="h-8 min-w-0 flex-1">
+                          <SelectValue data-ui="select-value-tablet-top-keyword-405" placeholder="전체" />
+                        </SelectTrigger>
+                        <SelectContent data-ui="select-content-tablet-top-keyword-406">
+                          <SelectItem data-ui="select-item-tablet-top-keyword-all-407" value="all">전체</SelectItem>
+                          {topKeywordCatalog.map((item, idx) => (
+                            <SelectItem
+                              data-ui={`top-keyword-option-tablet-${idx}-${uiToken(item.keyword)}`}
+                              key={item.keyword}
+                              value={item.keyword}
+                            >
+                              {item.keyword} (가게 {numFmt.format(item.placeCount)} / 언급 {numFmt.format(item.mentionCount)})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : null}
                   {isCompactViewport ? (
                     <Dialog data-ui="dialog-mobile-filter-root" open={mobileFilterDialogOpen} onOpenChange={setMobileFilterDialogOpen}>
                       <DialogTrigger data-ui="dialog-mobile-filter-trigger-wrap" asChild>
@@ -2433,31 +2484,6 @@ function App() {
                   </Dialog>
                 </div>
               </div>
-              {isTabletViewport ? (
-                <Field data-ui="field-tablet-top-keyword-401" className="mt-1 w-full max-w-[420px] min-w-0 gap-2">
-                  <FieldLabel data-ui="field-label-tablet-top-keyword-402" className="text-xs font-semibold text-muted-foreground">키워드 필터</FieldLabel>
-                  <Select data-ui="select-tablet-top-keyword-403" value={topKeywordFilter} onValueChange={setTopKeywordFilter}>
-                    <SelectTrigger data-ui="select-trigger-tablet-top-keyword-404" className={`w-full ${ACTIVE_FIELD_CLASS}`}>
-                      <SelectValue data-ui="select-value-tablet-top-keyword-405" placeholder="전체" />
-                    </SelectTrigger>
-                    <SelectContent data-ui="select-content-tablet-top-keyword-406">
-                      <SelectItem data-ui="select-item-tablet-top-keyword-all-407" value="all">전체</SelectItem>
-                      {topKeywordCatalog.map((item, idx) => (
-                        <SelectItem
-                          data-ui={`top-keyword-option-tablet-${idx}-${uiToken(item.keyword)}`}
-                          key={item.keyword}
-                          value={item.keyword}
-                        >
-                          {item.keyword} (가게 {numFmt.format(item.placeCount)} / 언급 {numFmt.format(item.mentionCount)})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FieldDescription data-ui="field-desc-tablet-top-keyword-408" className="text-[11px] text-muted-foreground">
-                    최상위 키워드가 아니어도 해당 키워드가 있으면 포함합니다.
-                  </FieldDescription>
-                </Field>
-              ) : null}
             </CardHeader>
             <CardContent data-ui="card-content-149" className={`${CARD_CONTENT_CLASS} xl:flex-col`}>
               <div data-ui="scroll-area-172" ref={desktopScrollRef} className="h-full min-h-0 w-full overflow-auto rounded-lg border bg-background">
