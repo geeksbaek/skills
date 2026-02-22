@@ -1159,6 +1159,11 @@ function App() {
       ? window.matchMedia("(max-width: 1279px)").matches
       : false
   )
+  const [isTabletViewport, setIsTabletViewport] = useState(
+    typeof window !== "undefined" && typeof window.matchMedia === "function"
+      ? window.matchMedia("(min-width: 768px) and (max-width: 1279px)").matches
+      : false
+  )
   const [loading, setLoading] = useState(false)
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null)
@@ -1177,17 +1182,30 @@ function App() {
 
   useEffect(() => {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") return
-    const mediaQuery = window.matchMedia("(max-width: 1279px)")
-    const handleChange = (event: MediaQueryListEvent) => setIsCompactViewport(event.matches)
-    setIsCompactViewport(mediaQuery.matches)
-
-    if (typeof mediaQuery.addEventListener === "function") {
-      mediaQuery.addEventListener("change", handleChange)
-      return () => mediaQuery.removeEventListener("change", handleChange)
+    const compactQuery = window.matchMedia("(max-width: 1279px)")
+    const tabletQuery = window.matchMedia("(min-width: 768px) and (max-width: 1279px)")
+    const syncViewportState = () => {
+      setIsCompactViewport(compactQuery.matches)
+      setIsTabletViewport(tabletQuery.matches)
     }
 
-    mediaQuery.addListener(handleChange)
-    return () => mediaQuery.removeListener(handleChange)
+    syncViewportState()
+
+    if (typeof compactQuery.addEventListener === "function" && typeof tabletQuery.addEventListener === "function") {
+      compactQuery.addEventListener("change", syncViewportState)
+      tabletQuery.addEventListener("change", syncViewportState)
+      return () => {
+        compactQuery.removeEventListener("change", syncViewportState)
+        tabletQuery.removeEventListener("change", syncViewportState)
+      }
+    }
+
+    compactQuery.addListener(syncViewportState)
+    tabletQuery.addListener(syncViewportState)
+    return () => {
+      compactQuery.removeListener(syncViewportState)
+      tabletQuery.removeListener(syncViewportState)
+    }
   }, [])
 
   useEffect(() => {
@@ -2096,25 +2114,27 @@ function App() {
         </Field>
       </div>
 
-      <Field data-ui="field-071" className={FIELD_STACK_CLASS}>
-        <FieldLabel data-ui="field-label-072" className="text-xs font-semibold text-muted-foreground">키워드 필터</FieldLabel>
-        <Select data-ui="select-073" value={topKeywordFilter} onValueChange={setTopKeywordFilter}>
-          <SelectTrigger data-ui="select-trigger-074" id="topKeywordFilter" className={`w-full ${ACTIVE_FIELD_CLASS}`}>
-            <SelectValue data-ui="select-value-075" placeholder="전체" />
-          </SelectTrigger>
-          <SelectContent data-ui="select-content-076">
-            <SelectItem data-ui="select-item-077" value="all">전체</SelectItem>
-            {topKeywordCatalog.map((item, idx) => (
-              <SelectItem data-ui={`top-keyword-option-${idx}-${uiToken(item.keyword)}`} key={item.keyword} value={item.keyword}>
-                {item.keyword} (가게 {numFmt.format(item.placeCount)} / 언급 {numFmt.format(item.mentionCount)})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <FieldDescription data-ui="field-desc-top-keyword-078" className="text-[11px] text-muted-foreground">
-          최상위 키워드가 아니어도 해당 키워드가 있으면 포함합니다.
-        </FieldDescription>
-      </Field>
+      {!isTabletViewport ? (
+        <Field data-ui="field-071" className={FIELD_STACK_CLASS}>
+          <FieldLabel data-ui="field-label-072" className="text-xs font-semibold text-muted-foreground">키워드 필터</FieldLabel>
+          <Select data-ui="select-073" value={topKeywordFilter} onValueChange={setTopKeywordFilter}>
+            <SelectTrigger data-ui="select-trigger-074" id="topKeywordFilter" className={`w-full ${ACTIVE_FIELD_CLASS}`}>
+              <SelectValue data-ui="select-value-075" placeholder="전체" />
+            </SelectTrigger>
+            <SelectContent data-ui="select-content-076">
+              <SelectItem data-ui="select-item-077" value="all">전체</SelectItem>
+              {topKeywordCatalog.map((item, idx) => (
+                <SelectItem data-ui={`top-keyword-option-${idx}-${uiToken(item.keyword)}`} key={item.keyword} value={item.keyword}>
+                  {item.keyword} (가게 {numFmt.format(item.placeCount)} / 언급 {numFmt.format(item.mentionCount)})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <FieldDescription data-ui="field-desc-top-keyword-078" className="text-[11px] text-muted-foreground">
+            최상위 키워드가 아니어도 해당 키워드가 있으면 포함합니다.
+          </FieldDescription>
+        </Field>
+      ) : null}
 
       <Button data-ui="button-079" id="resetBtn" type="button" variant="outline" size="sm" className="w-full" onClick={resetFilters}>
         <RotateCcw data-ui="rotate-ccw-080" className="size-4" /> 필터 초기화
@@ -2413,6 +2433,31 @@ function App() {
                   </Dialog>
                 </div>
               </div>
+              {isTabletViewport ? (
+                <Field data-ui="field-tablet-top-keyword-401" className="mt-1 w-full max-w-[420px] min-w-0 gap-2">
+                  <FieldLabel data-ui="field-label-tablet-top-keyword-402" className="text-xs font-semibold text-muted-foreground">키워드 필터</FieldLabel>
+                  <Select data-ui="select-tablet-top-keyword-403" value={topKeywordFilter} onValueChange={setTopKeywordFilter}>
+                    <SelectTrigger data-ui="select-trigger-tablet-top-keyword-404" className={`w-full ${ACTIVE_FIELD_CLASS}`}>
+                      <SelectValue data-ui="select-value-tablet-top-keyword-405" placeholder="전체" />
+                    </SelectTrigger>
+                    <SelectContent data-ui="select-content-tablet-top-keyword-406">
+                      <SelectItem data-ui="select-item-tablet-top-keyword-all-407" value="all">전체</SelectItem>
+                      {topKeywordCatalog.map((item, idx) => (
+                        <SelectItem
+                          data-ui={`top-keyword-option-tablet-${idx}-${uiToken(item.keyword)}`}
+                          key={item.keyword}
+                          value={item.keyword}
+                        >
+                          {item.keyword} (가게 {numFmt.format(item.placeCount)} / 언급 {numFmt.format(item.mentionCount)})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldDescription data-ui="field-desc-tablet-top-keyword-408" className="text-[11px] text-muted-foreground">
+                    최상위 키워드가 아니어도 해당 키워드가 있으면 포함합니다.
+                  </FieldDescription>
+                </Field>
+              ) : null}
             </CardHeader>
             <CardContent data-ui="card-content-149" className={`${CARD_CONTENT_CLASS} xl:flex-col`}>
               <div data-ui="scroll-area-172" ref={desktopScrollRef} className="h-full min-h-0 w-full overflow-auto rounded-lg border bg-background">
