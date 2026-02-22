@@ -314,7 +314,6 @@ const FIELD_STACK_CLASS = "min-w-0 flex flex-col gap-2"
 const CHIP_ROW_CLASS = "flex flex-wrap gap-2"
 const TWO_COL_GRID_CLASS = "grid gap-3 md:grid-cols-2"
 const ACTION_ROW_CLASS = "flex flex-wrap items-end gap-3"
-const MOBILE_ROW_CARD_CLASS = "space-y-3 rounded-lg border bg-card p-3"
 const CENTER_SEARCH_MIN_QUERY = 2
 const CENTER_SEARCH_DEBOUNCE_MS = 320
 const CENTER_SEARCH_ENDPOINT = "https://nominatim.openstreetmap.org/search"
@@ -1155,9 +1154,9 @@ function App() {
   const [convenienceDialogOpen, setConvenienceDialogOpen] = useState(false)
   const [advancedDialogOpen, setAdvancedDialogOpen] = useState(false)
   const [mobileFilterDialogOpen, setMobileFilterDialogOpen] = useState(false)
-  const [isMobileViewport, setIsMobileViewport] = useState(
+  const [isCompactViewport, setIsCompactViewport] = useState(
     typeof window !== "undefined" && typeof window.matchMedia === "function"
-      ? window.matchMedia("(max-width: 767px)").matches
+      ? window.matchMedia("(max-width: 1279px)").matches
       : false
   )
   const [loading, setLoading] = useState(false)
@@ -1170,7 +1169,6 @@ function App() {
   const rawMapRef = useRef<Map<number, RawRecord>>(new Map())
 
   const desktopScrollRef = useRef<HTMLDivElement | null>(null)
-  const mobileScrollRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedSearch(searchInput), 200)
@@ -1179,9 +1177,9 @@ function App() {
 
   useEffect(() => {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") return
-    const mediaQuery = window.matchMedia("(max-width: 767px)")
-    const handleChange = (event: MediaQueryListEvent) => setIsMobileViewport(event.matches)
-    setIsMobileViewport(mediaQuery.matches)
+    const mediaQuery = window.matchMedia("(max-width: 1279px)")
+    const handleChange = (event: MediaQueryListEvent) => setIsCompactViewport(event.matches)
+    setIsCompactViewport(mediaQuery.matches)
 
     if (typeof mediaQuery.addEventListener === "function") {
       mediaQuery.addEventListener("change", handleChange)
@@ -1193,10 +1191,10 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (!isMobileViewport && mobileFilterDialogOpen) {
+    if (!isCompactViewport && mobileFilterDialogOpen) {
       setMobileFilterDialogOpen(false)
     }
-  }, [isMobileViewport, mobileFilterDialogOpen])
+  }, [isCompactViewport, mobileFilterDialogOpen])
 
   const convenienceCatalog = useMemo(() => buildConvenienceCatalog(rows), [rows])
   const topKeywordCatalog = useMemo(() => buildTopKeywordCatalog(rows), [rows])
@@ -1840,13 +1838,6 @@ function App() {
     overscan: 20,
   })
 
-  const mobileVirtualizer = useVirtualizer({
-    count: tableRows.length,
-    getScrollElement: () => mobileScrollRef.current,
-    estimateSize: () => 140,
-    overscan: 10,
-  })
-
   const renderPrimaryFilterPanel = () => (
     <FieldGroup data-ui="field-group-022" className={PANEL_STACK_CLASS}>
       <Field data-ui="field-023" className={FIELD_STACK_CLASS}>
@@ -2144,7 +2135,7 @@ function App() {
       )}
       <div data-ui="div-007" className={APP_CONTENT_CLASS}>
         <div data-ui="div-018" className={APP_GRID_CLASS}>
-          {!isMobileViewport ? (
+          {!isCompactViewport ? (
             <Card data-ui="card-019" className="border-slate-200/80 shadow-xl shadow-slate-900/5 xl:flex xl:h-full xl:min-h-0 xl:flex-col">
               <CardContent data-ui="card-content-020" className={CARD_CONTENT_CLASS}>
                 <ScrollArea
@@ -2200,7 +2191,7 @@ function App() {
                 </div>
 
                 <div data-ui="dialog-filter-trigger-group" className="flex flex-wrap gap-2">
-                  {isMobileViewport ? (
+                  {isCompactViewport ? (
                     <Dialog data-ui="dialog-mobile-filter-root" open={mobileFilterDialogOpen} onOpenChange={setMobileFilterDialogOpen}>
                       <DialogTrigger data-ui="dialog-mobile-filter-trigger-wrap" asChild>
                         <Button data-ui="dialog-mobile-filter-trigger" type="button" variant="outline" className="gap-2">
@@ -2415,81 +2406,7 @@ function App() {
               </div>
             </CardHeader>
             <CardContent data-ui="card-content-149" className={`${CARD_CONTENT_CLASS} xl:flex-col`}>
-              <ScrollArea data-ui="scroll-area-150" viewportRef={mobileScrollRef} className="h-[min(72vh,860px)] rounded-lg border bg-background md:hidden xl:h-full">
-                {!tableRows.length ? (
-                  <div data-ui="div-152" className="py-8 text-center text-sm text-muted-foreground">
-                    데이터가 없습니다. 파일을 불러오거나 필터를 완화해 주세요.
-                  </div>
-                ) : (
-                  <div
-                    data-ui="div-151"
-                    style={{ height: `${mobileVirtualizer.getTotalSize()}px`, position: "relative" }}
-                    className="p-3"
-                  >
-                    {mobileVirtualizer.getVirtualItems().map((virtualItem) => {
-                      const rowModel = tableRows[virtualItem.index]
-                      const row = rowModel.original
-                      return (
-                        <div
-                          data-ui={`mobile-row-card-${uiToken(rowModel.id)}`}
-                          key={rowModel.id}
-                          ref={mobileVirtualizer.measureElement}
-                          data-index={virtualItem.index}
-                          className={MOBILE_ROW_CARD_CLASS}
-                          style={{
-                            position: "absolute",
-                            top: 0,
-                            left: 12,
-                            right: 12,
-                            transform: `translateY(${virtualItem.start}px)`,
-                          }}
-                        >
-                          <div data-ui={`mobile-row-header-${uiToken(rowModel.id)}`} className="flex items-start justify-between gap-2">
-                            {row.mapUrl ? (
-                              <a
-                                data-ui={`mobile-row-name-link-${uiToken(rowModel.id)}`}
-                                className="inline-flex items-center gap-1 font-semibold text-primary underline decoration-primary/60 underline-offset-4 transition-colors hover:text-primary/90 hover:decoration-primary"
-                                href={row.mapUrl}
-                                target="_blank"
-                                rel="noreferrer noopener"
-                              >
-                                <span data-ui={`mobile-row-name-link-label-${uiToken(rowModel.id)}`}>{row.name || "(이름 없음)"}</span>
-                                <ExternalLink data-ui={`mobile-row-name-link-icon-${uiToken(rowModel.id)}`} className="size-3 shrink-0 opacity-70" />
-                              </a>
-                            ) : (
-                              <span data-ui={`mobile-row-name-text-${uiToken(rowModel.id)}`} className="font-semibold">{row.name || "(이름 없음)"}</span>
-                            )}
-                            <Badge data-ui={`mobile-row-open-badge-${uiToken(rowModel.id)}`} variant="outline">{row.openAtRefLabel || "-"}</Badge>
-                          </div>
-                          <div data-ui={`mobile-row-grid-${uiToken(rowModel.id)}`} className="grid grid-cols-2 gap-2 text-xs">
-                            <div data-ui={`mobile-row-category-${uiToken(rowModel.id)}`} className="space-y-1">
-                              <div data-ui={`mobile-row-category-label-${uiToken(rowModel.id)}`} className="text-muted-foreground">카테고리</div>
-                              <div data-ui={`mobile-row-category-value-${uiToken(rowModel.id)}`} className="break-words">{row.category || "-"}</div>
-                            </div>
-                            <div data-ui={`mobile-row-reviews-${uiToken(rowModel.id)}`} className="space-y-1">
-                              <div data-ui={`mobile-row-reviews-label-${uiToken(rowModel.id)}`} className="text-muted-foreground">리뷰수</div>
-                              <div data-ui={`mobile-row-reviews-value-${uiToken(rowModel.id)}`} className="tabular-nums">{numFmt.format(row.reviewCount)}</div>
-                            </div>
-                            {showDistanceColumn ? (
-                              <div data-ui={`mobile-row-distance-${uiToken(rowModel.id)}`} className="space-y-1">
-                                <div data-ui={`mobile-row-distance-label-${uiToken(rowModel.id)}`} className="text-muted-foreground">거리</div>
-                                <div data-ui={`mobile-row-distance-value-${uiToken(rowModel.id)}`} className="tabular-nums">{row.distanceM == null ? "-" : `${numFmt.format(row.distanceM)}m`}</div>
-                              </div>
-                            ) : null}
-                            <div data-ui={`mobile-row-keyword-${uiToken(rowModel.id)}`} className="space-y-1">
-                              <div data-ui={`mobile-row-keyword-label-${uiToken(rowModel.id)}`} className="text-muted-foreground">키워드</div>
-                              <div data-ui={`mobile-row-keyword-value-${uiToken(rowModel.id)}`} className="break-words">{row.topKeyword || "-"}</div>
-                            </div>
-                          </div>
-                          <div data-ui={`mobile-row-address-${uiToken(rowModel.id)}`} className="text-xs text-muted-foreground break-words">{row.address || "-"}</div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </ScrollArea>
-
-              <div data-ui="scroll-area-172" ref={desktopScrollRef} className="hidden h-[min(72vh,860px)] overflow-auto rounded-lg border bg-background md:block xl:h-full">
+              <div data-ui="scroll-area-172" ref={desktopScrollRef} className="h-[min(72vh,860px)] overflow-auto rounded-lg border bg-background xl:h-full">
                 <div data-ui="div-173" className="min-w-[760px]">
                   <Table data-ui="table-174" containerClassName="!overflow-visible">
                     <TableHeader data-ui="table-header-175" id="head" className="sticky top-0 z-10 bg-muted/70 backdrop-blur supports-[backdrop-filter]:bg-muted/70">
