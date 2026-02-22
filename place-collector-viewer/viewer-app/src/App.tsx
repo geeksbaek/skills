@@ -429,7 +429,11 @@ function toInputTime(date: Date): string {
 
 function parseTimeToMinutes(text: string | undefined): number | null {
   if (typeof text !== "string") return null
-  const m = text.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/)
+  const normalized = text
+    .trim()
+    .replace(/[：﹕]/g, ":")
+  if (!normalized) return null
+  const m = normalized.match(/^(\d{1,2})\s*:\s*(\d{2})(?::\d{2})?$/)
   if (!m) return null
   const hh = Number(m[1])
   const mm = Number(m[2])
@@ -459,6 +463,29 @@ function matchDayLabel(dayText: unknown, dayKo: string): boolean {
   return false
 }
 
+function hasClosedKeyword(text: unknown): boolean {
+  const normalized = toText(text).toLowerCase().replace(/\s+/g, "")
+  return normalized.includes("휴무") || normalized.includes("정기휴무")
+}
+
+function matchesRegularClosedDay(regularClosedDays: unknown, dayKo: string): boolean {
+  const normalized = toText(regularClosedDays).toLowerCase().replace(/\s+/g, "")
+  if (!normalized || !hasClosedKeyword(normalized)) return false
+
+  const dayMap: Record<string, string> = {
+    일: "일요일",
+    월: "월요일",
+    화: "화요일",
+    수: "수요일",
+    목: "목요일",
+    금: "금요일",
+    토: "토요일",
+  }
+
+  const fullDay = dayMap[dayKo] ?? `${dayKo}요일`
+  return normalized.includes(fullDay) || normalized.includes(`${dayKo}요일`)
+}
+
 function computeReferenceOpenState(row: PlaceRow, refDateTime: Date, rawMap: Map<number, RawRecord>): OpenState {
   const fallback = row.openDesc ? `계산불가 · ${row.openDesc}` : "계산불가"
   if (!(refDateTime instanceof Date) || Number.isNaN(refDateTime.getTime())) {
@@ -480,15 +507,30 @@ function computeReferenceOpenState(row: PlaceRow, refDateTime: Date, rawMap: Map
     details.find((entry) => entry && entry.day === "매일")
 
   if (!byDay) {
+    if (matchesRegularClosedDay(row.regularClosedDays, dayKo) || hasClosedKeyword(row.openDesc)) {
+      return { label: "휴무", rank: 1, code: "unknown" }
+    }
     return { label: fallback, rank: 0, code: "unknown" }
   }
 
   const businessHours = (byDay.businessHours as { start?: string; end?: string } | undefined) ?? undefined
   const start = parseTimeToMinutes(businessHours?.start)
   const end = parseTimeToMinutes(businessHours?.end)
+  const dayText = toText(byDay.day)
+  const dayStatusText = [
+    dayText,
+    toText((byDay as { description?: unknown }).description),
+    toText((byDay as { status?: unknown }).status),
+    toText((byDay as { note?: unknown }).note),
+  ]
+    .join(" ")
+    .toLowerCase()
 
   if (start == null || end == null) {
-    if ((row.openDesc || "").includes("휴무")) return { label: "휴무", rank: 1, code: "unknown" }
+    const missingBusinessHours = !businessHours || (!toText(businessHours.start).trim() && !toText(businessHours.end).trim())
+    if (missingBusinessHours || hasClosedKeyword(dayStatusText) || hasClosedKeyword(row.openDesc) || matchesRegularClosedDay(row.regularClosedDays, dayKo)) {
+      return { label: "휴무", rank: 1, code: "unknown" }
+    }
     return { label: fallback, rank: 0, code: "unknown" }
   }
 
