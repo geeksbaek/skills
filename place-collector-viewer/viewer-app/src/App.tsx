@@ -304,11 +304,11 @@ const TOOLTIP_INDICATOR_CLASS = "cursor-help underline decoration-dotted underli
 const DEFAULT_MIN_REVIEW = 50
 const DEFAULT_MAX_DISTANCE: number | null = null
 const ACTIVE_FIELD_CLASS = "h-8"
-const APP_SURFACE_CLASS = "min-h-screen bg-[radial-gradient(circle_at_0%_0%,rgba(15,118,110,0.14),transparent_42%),radial-gradient(circle_at_100%_0%,rgba(59,130,246,0.14),transparent_40%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] p-4 md:p-6 xl:h-dvh xl:overflow-hidden"
-const APP_CONTENT_CLASS = "mx-auto flex w-full max-w-[1600px] flex-col gap-4 xl:h-full xl:min-h-0"
-const APP_GRID_CLASS = "grid gap-4 xl:min-h-0 xl:flex-1 xl:grid-cols-[360px_minmax(0,1fr)]"
+const APP_SURFACE_CLASS = "h-dvh overflow-hidden bg-[radial-gradient(circle_at_0%_0%,rgba(15,118,110,0.14),transparent_42%),radial-gradient(circle_at_100%_0%,rgba(59,130,246,0.14),transparent_40%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] p-4 md:p-6"
+const APP_CONTENT_CLASS = "mx-auto flex h-full min-h-0 min-w-0 w-full max-w-[1600px] flex-col gap-4"
+const APP_GRID_CLASS = "grid h-full min-h-0 min-w-0 grid-rows-[minmax(0,1fr)] gap-4 xl:grid-cols-[360px_minmax(0,1fr)]"
 const CARD_HEADER_CLASS = "space-y-2 px-4 py-0 md:px-5"
-const CARD_CONTENT_CLASS = "min-w-0 px-4 py-0 md:px-5 xl:flex xl:min-h-0 xl:flex-1"
+const CARD_CONTENT_CLASS = "min-w-0 flex min-h-0 flex-1 px-4 py-0 md:px-5"
 const PANEL_STACK_CLASS = "min-w-0 w-full max-w-full gap-4"
 const FIELD_STACK_CLASS = "min-w-0 flex flex-col gap-2"
 const CHIP_ROW_CLASS = "flex flex-wrap gap-2"
@@ -2136,11 +2136,11 @@ function App() {
       <div data-ui="div-007" className={APP_CONTENT_CLASS}>
         <div data-ui="div-018" className={APP_GRID_CLASS}>
           {!isCompactViewport ? (
-            <Card data-ui="card-019" className="border-slate-200/80 shadow-xl shadow-slate-900/5 xl:flex xl:h-full xl:min-h-0 xl:flex-col">
+            <Card data-ui="card-019" className="min-w-0 border-slate-200/80 shadow-xl shadow-slate-900/5 xl:flex xl:h-full xl:min-h-0 xl:flex-col">
               <CardContent data-ui="card-content-020" className={CARD_CONTENT_CLASS}>
                 <ScrollArea
                   data-ui="scroll-area-021"
-                  className="h-[min(72vh,860px)] w-full min-w-0 xl:h-full"
+                  className="h-full w-full min-w-0"
                   viewportClassName="[&>div]:!block [&>div]:!w-full [&>div]:!min-w-0"
                 >
                   {renderPrimaryFilterPanel()}
@@ -2149,7 +2149,7 @@ function App() {
             </Card>
           ) : null}
 
-          <Card data-ui="card-140" className="border-slate-200/80 shadow-xl shadow-slate-900/5 xl:flex xl:h-full xl:min-h-0 xl:flex-col">
+          <Card data-ui="card-140" className="min-w-0 border-slate-200/80 shadow-xl shadow-slate-900/5 flex h-full min-h-0 flex-col">
             <CardHeader data-ui="card-header-141" className={CARD_HEADER_CLASS}>
               <div data-ui="card-140-header-row" className="flex flex-wrap items-start justify-between gap-3">
                 <div data-ui="div-142" id="status" className={FIELD_STACK_CLASS}>
@@ -2406,8 +2406,8 @@ function App() {
               </div>
             </CardHeader>
             <CardContent data-ui="card-content-149" className={`${CARD_CONTENT_CLASS} xl:flex-col`}>
-              <div data-ui="scroll-area-172" ref={desktopScrollRef} className="h-[min(72vh,860px)] overflow-auto rounded-lg border bg-background xl:h-full">
-                <div data-ui="div-173" className="min-w-[760px]">
+              <div data-ui="scroll-area-172" ref={desktopScrollRef} className="h-full min-h-0 w-full overflow-auto rounded-lg border bg-background">
+                <div data-ui="div-173" className="min-w-full w-max">
                   <Table data-ui="table-174" containerClassName="!overflow-visible">
                     <TableHeader data-ui="table-header-175" id="head" className="sticky top-0 z-10 bg-muted/70 backdrop-blur supports-[backdrop-filter]:bg-muted/70">
                       {table.getHeaderGroups().map((headerGroup) => (
