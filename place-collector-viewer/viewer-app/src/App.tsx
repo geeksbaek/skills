@@ -1525,6 +1525,26 @@ function App() {
     return `${idx + 1}${item.desc ? "▼" : "▲"}`
   }
 
+  const getActiveKeywordMetric = useCallback((row: PlaceRow): { label: string; pct: number; count: number } => {
+    if (topKeywordFilter !== "all") {
+      const stat = row.keywordStats.find((item) => item.label === topKeywordFilter)
+      if (stat) {
+        return {
+          label: stat.label,
+          pct: Number(stat.pct.toFixed(1)),
+          count: stat.count,
+        }
+      }
+      return { label: topKeywordFilter, pct: 0, count: 0 }
+    }
+
+    return {
+      label: row.topKeyword,
+      pct: Number(row.topKeywordPct.toFixed(1)),
+      count: row.topKeywordCount,
+    }
+  }, [topKeywordFilter])
+
   const renderCell = (row: PlaceRow, column: ColumnDef) => {
     if (column.key === "name") {
       const name = row.name || "(이름 없음)"
@@ -1549,9 +1569,10 @@ function App() {
     if (column.key === "distanceM") return row.distanceM == null ? "-" : numFmt.format(row.distanceM)
 
     if (column.key === "topKeywordPct") {
-      if (!row.topKeyword && row.topKeywordPct <= 0) return "-"
-      const pct = `${row.topKeywordPct.toFixed(1)}%`
-      const key = row.topKeyword ? ` (${row.topKeyword})` : ""
+      const metric = getActiveKeywordMetric(row)
+      if (!metric.label && metric.pct <= 0) return "-"
+      const pct = `${metric.pct.toFixed(1)}%`
+      const key = metric.label ? ` (${metric.label})` : ""
       return `${pct}${key}`
     }
 
@@ -1566,12 +1587,18 @@ function App() {
 
   const desktopTableColumns: TanstackColumnDef<PlaceRow>[] = visibleColumns.map((column) => ({
     id: String(column.key),
-    accessorFn: (row) => row[column.key as keyof PlaceRow],
+    accessorFn: (row) => {
+      if (column.key === "topKeywordPct") return getActiveKeywordMetric(row).pct
+      return row[column.key as keyof PlaceRow]
+    },
     enableSorting: true,
     header: ({ column: tableColumn }) => {
       const marker = getSortMarker(tableColumn.id)
       const centerHeaderKeys = ["petFriendly", "hasParkingOption", "hasTakeoutOption", "openAtRefRank", "priceCategory"]
       const justify = centerHeaderKeys.includes(column.key as string) ? "justify-center" : "justify-start"
+      const headerLabel = column.key === "topKeywordPct"
+        ? (topKeywordFilter === "all" ? "최상위 키워드%" : `키워드% (${topKeywordFilter})`)
+        : column.label
       return (
         <Button data-ui={`table-header-sort-button-${uiToken(tableColumn.id)}`}
           type="button"
@@ -1579,7 +1606,7 @@ function App() {
           className={`h-auto w-full ${justify} px-0 py-0 text-xs font-semibold`}
           onClick={tableColumn.getToggleSortingHandler()}
         >
-          <span data-ui={`table-header-label-${uiToken(tableColumn.id)}`}>{column.label}</span>
+          <span data-ui={`table-header-label-${uiToken(tableColumn.id)}`}>{headerLabel}</span>
           {marker ? <Badge data-ui={`table-header-sort-marker-${uiToken(tableColumn.id)}`} variant="outline" className="ml-1 text-[10px]">{marker}</Badge> : null}
         </Button>
       )
