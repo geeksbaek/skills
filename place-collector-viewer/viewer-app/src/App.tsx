@@ -2201,7 +2201,7 @@ function App() {
                       </DialogTrigger>
                       <DialogContent
                         data-ui="dialog-mobile-filter-content"
-                        className="flex max-h-[calc(100dvh-2rem)] w-[min(96vw,760px)] max-w-[760px] flex-col overflow-hidden p-0"
+                        className="max-h-[calc(100dvh-2rem)] w-[min(96vw,760px)] max-w-[760px] grid-rows-[auto_minmax(0,1fr)] overflow-hidden gap-0 p-0"
                       >
                         <DialogHeader data-ui="dialog-mobile-filter-header" className="space-y-2 border-b px-5 py-4">
                           <DialogTitle data-ui="dialog-mobile-filter-title">필터</DialogTitle>
@@ -2211,7 +2211,7 @@ function App() {
                         </DialogHeader>
                         <ScrollArea
                           data-ui="dialog-mobile-filter-scroll-area"
-                          className="min-h-0 flex-1 px-5 py-4"
+                          className="h-full min-h-0 px-5 py-4"
                           viewportClassName="[&>div]:!block [&>div]:!w-full [&>div]:!min-w-0"
                         >
                           {renderPrimaryFilterPanel()}
@@ -2234,7 +2234,7 @@ function App() {
                     </DialogTrigger>
                     <DialogContent
                       data-ui="dialog-convenience-content"
-                      className="flex max-h-[calc(100dvh-2rem)] w-[min(96vw,760px)] max-w-[760px] flex-col overflow-hidden p-0"
+                      className="max-h-[calc(100dvh-2rem)] w-[min(96vw,760px)] max-w-[760px] grid-rows-[auto_minmax(0,1fr)] overflow-hidden gap-0 p-0"
                     >
                       <DialogHeader data-ui="dialog-convenience-header" className="space-y-2 border-b px-5 py-4">
                         <DialogTitle data-ui="dialog-convenience-title">편의시설 및 서비스 필터</DialogTitle>
@@ -2242,7 +2242,7 @@ function App() {
                           옵션/편의시설 정보를 합쳐 필터합니다.
                         </DialogDescription>
                       </DialogHeader>
-                      <ScrollArea data-ui="dialog-convenience-scroll-area" className="min-h-0 flex-1 px-5 py-4">
+                      <ScrollArea data-ui="dialog-convenience-scroll-area" className="h-full min-h-0 px-5 py-4">
                         <FieldSet data-ui="dialog-convenience-field-set" className="min-w-0 gap-3">
                           <div data-ui="dialog-convenience-action-row" className={ACTION_ROW_CLASS}>
                             <Field data-ui="dialog-convenience-mode-field" className={`min-w-[180px] flex-1 ${FIELD_STACK_CLASS}`}>
@@ -2306,7 +2306,7 @@ function App() {
                     </DialogTrigger>
                     <DialogContent
                       data-ui="dialog-advanced-content"
-                      className="flex max-h-[calc(100dvh-2rem)] w-[min(96vw,1080px)] max-w-[1080px] flex-col overflow-hidden p-0"
+                      className="max-h-[calc(100dvh-2rem)] w-[min(96vw,1080px)] max-w-[1080px] grid-rows-[auto_minmax(0,1fr)] overflow-hidden gap-0 p-0"
                     >
                       <DialogHeader data-ui="dialog-advanced-header" className="space-y-2 border-b px-5 py-4">
                         <DialogTitle data-ui="dialog-advanced-title">고급 필터</DialogTitle>
@@ -2314,7 +2314,7 @@ function App() {
                           파생/원본 필드에 규칙 기반 조건을 추가합니다.
                         </DialogDescription>
                       </DialogHeader>
-                      <ScrollArea data-ui="dialog-advanced-scroll-area" className="min-h-0 flex-1 px-5 py-4">
+                      <ScrollArea data-ui="dialog-advanced-scroll-area" className="h-full min-h-0 px-5 py-4">
                         <FieldSet data-ui="dialog-advanced-field-set" className="min-w-0 gap-3">
                           <div data-ui="dialog-advanced-action-row" className={ACTION_ROW_CLASS}>
                             <Field data-ui="dialog-advanced-mode-field" className={`min-w-[180px] flex-1 ${FIELD_STACK_CLASS}`}>
