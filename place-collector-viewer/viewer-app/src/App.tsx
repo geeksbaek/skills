@@ -31,6 +31,9 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import cheongdamEmbeddedRaw from "@/embedded/cheongdam-2026-02-20.json?raw"
+import gwanggyoEmbeddedRaw from "@/embedded/gwanggyo-2026-02-20.json?raw"
+import pangyoEmbeddedRaw from "@/embedded/pangyo-2026-02-20.json?raw"
 
 type ColumnType = "text" | "number" | "boolean"
 type RawRecord = Record<string, unknown>
@@ -65,6 +68,13 @@ interface CenterSearchResult {
   x: number
   y: number
   label: string
+}
+
+interface EmbeddedDataset {
+  id: string
+  label: string
+  filename: string
+  jsonText: string
 }
 
 interface PlaceRow {
@@ -310,8 +320,35 @@ const CENTER_SEARCH_DEBOUNCE_MS = 320
 const CENTER_SEARCH_ENDPOINT = "https://nominatim.openstreetmap.org/search"
 const CENTER_SEARCH_FALLBACK_ENDPOINT = "https://photon.komoot.io/api/"
 const CENTER_SEARCH_LIMIT = 8
+const EMBEDDED_DATASETS: EmbeddedDataset[] = [
+  {
+    id: "cheongdam-2026-02-20",
+    label: "청담 (2026-02-20)",
+    filename: "cheongdam-2026-02-20.json",
+    jsonText: cheongdamEmbeddedRaw,
+  },
+  {
+    id: "gwanggyo-2026-02-20",
+    label: "광교 (2026-02-20)",
+    filename: "gwanggyo-2026-02-20.json",
+    jsonText: gwanggyoEmbeddedRaw,
+  },
+  {
+    id: "pangyo-2026-02-20",
+    label: "판교 (2026-02-20)",
+    filename: "pangyo-2026-02-20.json",
+    jsonText: pangyoEmbeddedRaw,
+  },
+]
 
 const numFmt = new Intl.NumberFormat("ko-KR")
+
+function formatBytesToLabel(size: number): string {
+  if (!Number.isFinite(size) || size <= 0) return "0 B"
+  if (size < 1024) return `${size} B`
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`
+}
 
 function toNumOrNull(value: unknown): number | null {
   if (value === null || value === undefined) return null
@@ -1120,6 +1157,7 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null)
+  const [selectedEmbeddedDatasetId, setSelectedEmbeddedDatasetId] = useState<string>(EMBEDDED_DATASETS[0]?.id ?? "")
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const centerSearchSeqRef = useRef(0)
@@ -1138,6 +1176,10 @@ function App() {
   const priceEmojiCatalog = useMemo(() => buildPriceEmojiCatalog(rows), [rows])
   const filterFields = useMemo(() => buildFilterFields(rows, rawMapRef.current), [rows])
   const filterFieldMap = useMemo(() => new Map(filterFields.map((field) => [field.key, field])), [filterFields])
+  const selectedEmbeddedDataset = useMemo(
+    () => EMBEDDED_DATASETS.find((dataset) => dataset.id === selectedEmbeddedDatasetId) ?? null,
+    [selectedEmbeddedDatasetId]
+  )
 
   useEffect(() => {
     if (topKeywordFilter !== "all" && !topKeywordCatalog.some((item) => item.keyword === topKeywordFilter)) {
@@ -1404,6 +1446,12 @@ function App() {
     reader.readAsText(file, "utf-8")
   }
 
+  const loadEmbeddedDataset = useCallback(() => {
+    if (!selectedEmbeddedDataset || loading) return
+    setSelectedFileName(`${selectedEmbeddedDataset.filename} (내장)`)
+    loadJsonText(selectedEmbeddedDataset.jsonText)
+  }, [loadJsonText, loading, selectedEmbeddedDataset])
+
   useEffect(() => {
     const onDragOver = (event: DragEvent) => {
       event.preventDefault()
@@ -1413,6 +1461,7 @@ function App() {
       event.preventDefault()
       const file = event.dataTransfer?.files?.[0]
       if (!file || !file.name.toLowerCase().endsWith(".json")) return
+      setSelectedFileName(file.name)
       const reader = new FileReader()
       reader.onload = () => loadJsonText(String(reader.result || ""))
       reader.readAsText(file, "utf-8")
@@ -1516,6 +1565,7 @@ function App() {
     setSelectedConveniences([])
     setAdvancedRules([])
     setStatusError(null)
+    setSelectedFileName(null)
   }
 
   const getSortMarker = (columnId: string): string => {
@@ -1798,6 +1848,46 @@ function App() {
                       <FolderOpen className="size-4 shrink-0 text-muted-foreground" />
                       <span className="truncate">{selectedFileName ?? "파일을 선택하세요..."}</span>
                     </Button>
+                  </Field>
+
+                  <Field data-ui="field-embedded-dataset-301" className={FIELD_STACK_CLASS}>
+                    <FieldLabel data-ui="field-label-embedded-dataset-302" className="text-xs font-semibold text-muted-foreground">내장 데이터셋</FieldLabel>
+                    <div data-ui="embedded-dataset-row-303" className="flex items-center gap-2">
+                      <Select
+                        data-ui="embedded-dataset-select-304"
+                        value={selectedEmbeddedDatasetId}
+                        onValueChange={setSelectedEmbeddedDatasetId}
+                      >
+                        <SelectTrigger data-ui="embedded-dataset-trigger-305" className={`min-w-0 flex-1 ${ACTIVE_FIELD_CLASS}`}>
+                          <SelectValue data-ui="embedded-dataset-value-306" placeholder="데이터셋 선택" />
+                        </SelectTrigger>
+                        <SelectContent data-ui="embedded-dataset-content-307">
+                          {EMBEDDED_DATASETS.map((dataset, idx) => (
+                            <SelectItem
+                              data-ui={`embedded-dataset-option-308-${idx}-${uiToken(dataset.id)}`}
+                              key={dataset.id}
+                              value={dataset.id}
+                            >
+                              {dataset.label} ({formatBytesToLabel(dataset.jsonText.length)})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        data-ui="embedded-dataset-load-button-309"
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="shrink-0"
+                        onClick={loadEmbeddedDataset}
+                        disabled={!selectedEmbeddedDataset || loading}
+                      >
+                        불러오기
+                      </Button>
+                    </div>
+                    <FieldDescription data-ui="embedded-dataset-desc-310" className="text-[11px] text-muted-foreground">
+                      청담/광교/판교 JSON이 앱에 내장되어 있습니다.
+                    </FieldDescription>
                   </Field>
 
                   <Field data-ui="field-026" className={FIELD_STACK_CLASS}>

@@ -1,0 +1,44 @@
+name: Deploy Place Collector Viewer Pages
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "place-collector-viewer/assets/**"
+      - ".github/workflows/deploy-place-collector-viewer-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare Site
+        run: |
+          cp place-collector-viewer/assets/place-datagrid-view.html place-collector-viewer/assets/index.html
+          touch place-collector-viewer/assets/.nojekyll
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: place-collector-viewer/assets
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
