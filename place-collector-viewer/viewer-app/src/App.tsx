@@ -81,6 +81,9 @@ interface PlaceRow {
   topKeyword: string
   topKeywordCount: number
   topKeywordPct: number
+  keywordStats: Array<{ label: string; count: number; pct: number }>
+  keywordLabels: string[]
+  keywordText: string
   openDesc: string
   openAtRefLabel: string
   openAtRefRank: number
@@ -146,6 +149,9 @@ const DERIVED_FIELD_META: Record<string, { label: string; type: ColumnType }> = 
   topKeyword: { label: "최상위 키워드", type: "text" },
   topKeywordCount: { label: "최상위 키워드 수", type: "number" },
   topKeywordPct: { label: "최상위 키워드 %", type: "number" },
+  keywordStats: { label: "키워드 통계", type: "text" },
+  keywordLabels: { label: "전체 키워드 목록", type: "text" },
+  keywordText: { label: "전체 키워드 텍스트", type: "text" },
   openDesc: { label: "영업 상태", type: "text" },
   openAtRefLabel: { label: "기준시점 영업", type: "text" },
   openAtRefRank: { label: "기준시점 영업순위", type: "number" },
@@ -565,21 +571,25 @@ function computeReferenceOpenState(row: PlaceRow, refDateTime: Date, rawMap: Map
   return { label: "영업중", rank: 5, code: "open" }
 }
 
-function getTopKeyword(details: unknown, reviewCount: number): { label: string; count: number; pct: number } {
-  if (Array.isArray(details) && details.length) {
-    const top = details
-      .filter((d): d is { displayName?: string; count: number } => Boolean(d && typeof d === "object" && typeof (d as { count?: unknown }).count === "number"))
-      .sort((a, b) => b.count - a.count)[0]
+function extractKeywordStats(details: unknown, reviewCount: number): Array<{ label: string; count: number; pct: number }> {
+  if (!Array.isArray(details) || !details.length) return []
 
-    if (top) {
-      const label = top.displayName || ""
-      const count = top.count
-      const pct = reviewCount > 0 ? (count / reviewCount) * 100 : 0
-      return { label, count, pct }
-    }
+  const countByKeyword = new Map<string, number>()
+  for (const item of details) {
+    if (!item || typeof item !== "object") continue
+    const label = toText((item as { displayName?: unknown }).displayName).trim()
+    const count = toNumOrNull((item as { count?: unknown }).count)
+    if (!label || count == null || count <= 0) continue
+    countByKeyword.set(label, (countByKeyword.get(label) || 0) + count)
   }
 
-  return { label: "", count: 0, pct: 0 }
+  return [...countByKeyword.entries()]
+    .map(([label, count]) => ({
+      label,
+      count,
+      pct: reviewCount > 0 ? (count / reviewCount) * 100 : 0,
+    }))
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "ko"))
 }
 
 function formatDetailHours(raw: RawRecord | undefined): string[] {
@@ -650,7 +660,10 @@ function normalizeRecord(raw: RawRecord, fallbackId: string, index: number): Pla
   const reviewCount = toNum(raw.reviewCount)
   const avgRating = toNum(raw.avgRating)
   const parsedDistance = parseDistanceMeters(raw.distance)
-  const topKeyword = getTopKeyword(raw.details, reviewCount)
+  const keywordStats = extractKeywordStats(raw.details, reviewCount)
+  const topKeyword = keywordStats[0] || { label: "", count: 0, pct: 0 }
+  const keywordLabels = keywordStats.map((item) => item.label)
+  const keywordText = keywordLabels.join(", ")
   const placeId = toText(raw.id || fallbackId)
 
   const options = toText(raw.options)
@@ -673,7 +686,7 @@ function normalizeRecord(raw: RawRecord, fallbackId: string, index: number): Pla
 
   const _searchText = [
     name, category, address, options, phone,
-    topKeyword.label, openDescText, priceCategoryText,
+    topKeyword.label, keywordText, openDescText, priceCategoryText,
     parkingDetail, detailConveniences, conveniencesTextVal,
     broadcastInfo,
   ].join(" ").toLowerCase()
@@ -692,6 +705,9 @@ function normalizeRecord(raw: RawRecord, fallbackId: string, index: number): Pla
     topKeyword: topKeyword.label,
     topKeywordCount: topKeyword.count,
     topKeywordPct: Number(topKeyword.pct.toFixed(1)),
+    keywordStats,
+    keywordLabels,
+    keywordText,
     openDesc: openDescText,
     openAtRefLabel: "",
     openAtRefRank: 0,
@@ -761,17 +777,28 @@ function buildConvenienceCatalog(rows: PlaceRow[]): Array<{ name: string; count:
     .map(([name, count]) => ({ name, count }))
 }
 
-function buildTopKeywordCatalog(rows: PlaceRow[]): Array<{ keyword: string; count: number }> {
-  const counts = new Map<string, number>()
+function buildTopKeywordCatalog(rows: PlaceRow[]): Array<{ keyword: string; placeCount: number; mentionCount: number }> {
+  const counts = new Map<string, { placeCount: number; mentionCount: number }>()
   for (const row of rows) {
-    const keyword = toText(row.topKeyword).trim()
-    if (!keyword) continue
-    counts.set(keyword, (counts.get(keyword) || 0) + 1)
+    const seenInRow = new Set<string>()
+    for (const stat of row.keywordStats) {
+      const keyword = toText(stat.label).trim()
+      const mentionCount = toNumOrNull(stat.count) ?? 0
+      if (!keyword) continue
+
+      const item = counts.get(keyword) || { placeCount: 0, mentionCount: 0 }
+      if (!seenInRow.has(keyword)) {
+        item.placeCount += 1
+        seenInRow.add(keyword)
+      }
+      item.mentionCount += mentionCount > 0 ? mentionCount : 0
+      counts.set(keyword, item)
+    }
   }
 
   return [...counts.entries()]
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ko"))
-    .map(([keyword, count]) => ({ keyword, count }))
+    .sort((a, b) => b[1].placeCount - a[1].placeCount || b[1].mentionCount - a[1].mentionCount || a[0].localeCompare(b[0], "ko"))
+    .map(([keyword, value]) => ({ keyword, placeCount: value.placeCount, mentionCount: value.mentionCount }))
 }
 
 function buildPriceEmojiCatalog(rows: PlaceRow[]): Array<{ emoji: string; count: number; categories: string[] }> {
@@ -1183,7 +1210,7 @@ function App() {
       }
 
       if (refOpenMode !== "all" && row.openAtRefCode !== refOpenMode) return false
-      if (topKeywordFilter !== "all" && row.topKeyword !== topKeywordFilter) return false
+      if (topKeywordFilter !== "all" && !row.keywordLabels.includes(topKeywordFilter)) return false
       if (priceCategoryFilter !== "all" && toPriceCategoryEmoji(row.priceCategory) !== priceCategoryFilter) return false
 
       if (selectedConveniences.length) {
@@ -1212,12 +1239,13 @@ function App() {
     if (keywords.length > 0) list.push(`검색 ${keywords.length}`)
     if (minReviewPreset > 0) list.push(`최소 리뷰 ${numFmt.format(minReviewPreset)}+`)
     if (maxDistancePreset != null) list.push(`최대 거리 ${numFmt.format(maxDistancePreset)}m`)
+    if (topKeywordFilter !== "all") list.push(`키워드 ${topKeywordFilter}`)
     if (priceCategoryFilter !== "all") list.push(`가격대 ${priceCategoryFilter}`)
     if (selectedConveniences.length > 0) list.push(`편의시설 ${selectedConveniences.length}`)
     if (advancedRules.length > 0) list.push(`고급규칙 ${advancedRules.length}`)
     if (sorting.length > 0) list.push(`정렬 ${sorting.length}`)
     return list
-  }, [keywords.length, minReviewPreset, maxDistancePreset, priceCategoryFilter, selectedConveniences.length, advancedRules.length, sorting.length])
+  }, [keywords.length, minReviewPreset, maxDistancePreset, topKeywordFilter, priceCategoryFilter, selectedConveniences.length, advancedRules.length, sorting.length])
 
   const selectedCenterSearchResult = useMemo(
     () => centerSearchResults.find((item) => item.id === selectedCenterSearchResultId) ?? null,
@@ -1953,7 +1981,7 @@ function App() {
                   </div>
 
                   <Field data-ui="field-071" className={FIELD_STACK_CLASS}>
-                    <FieldLabel data-ui="field-label-072" className="text-xs font-semibold text-muted-foreground">최상위 키워드</FieldLabel>
+                    <FieldLabel data-ui="field-label-072" className="text-xs font-semibold text-muted-foreground">키워드 필터</FieldLabel>
                     <Select data-ui="select-073" value={topKeywordFilter} onValueChange={setTopKeywordFilter}>
                       <SelectTrigger data-ui="select-trigger-074" id="topKeywordFilter" className={`w-full ${ACTIVE_FIELD_CLASS}`}>
                         <SelectValue data-ui="select-value-075" placeholder="전체" />
@@ -1962,11 +1990,14 @@ function App() {
                         <SelectItem data-ui="select-item-077" value="all">전체</SelectItem>
                         {topKeywordCatalog.map((item, idx) => (
                           <SelectItem data-ui={`top-keyword-option-${idx}-${uiToken(item.keyword)}`} key={item.keyword} value={item.keyword}>
-                            {item.keyword} ({numFmt.format(item.count)})
+                            {item.keyword} (가게 {numFmt.format(item.placeCount)} / 언급 {numFmt.format(item.mentionCount)})
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                    <FieldDescription data-ui="field-desc-top-keyword-078" className="text-[11px] text-muted-foreground">
+                      최상위 키워드가 아니어도 해당 키워드가 있으면 포함합니다.
+                    </FieldDescription>
                   </Field>
 
                   <Button data-ui="button-079" id="resetBtn" type="button" variant="outline" size="sm" className="w-full" onClick={resetFilters}>
