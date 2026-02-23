@@ -5,10 +5,12 @@ import argparse
 import base64
 import json
 import os
+import random
 import re
 import sqlite3
 import sys
 import time
+import urllib.parse
 import uuid
 from datetime import datetime
 import requests
@@ -121,10 +123,11 @@ def upload_file(session: requests.Session, filepath: str, index: int, is_last: b
         raise RuntimeError(f"preUpload 실패: {result}")
 
     ok_data = raonk_decrypt(result.replace("[OK]", ""))
-    parts = ok_data.split(FF)
+    # preUpload 응답은 VT(\x0b)로 구분됨: save_path\x0bfile_size\x0b-\x0b-
+    parts = ok_data.split(VT)
     save_path = parts[0] if parts else ""
-    if len(parts) >= 3 and parts[2]:
-        file_guid = parts[2]
+    if len(parts) >= 4 and parts[3] and parts[3] != "-":
+        file_guid = parts[3]
     print(f"  [{index+1}] preUpload 완료 → {save_path}")
 
     # 단계 2: processUpload (c02) - 청크 전송
@@ -332,6 +335,31 @@ def reverse_geocode(lat: float, lng: float) -> dict | None:
     return None
 
 
+# ── 지도 이미지 URL 생성 (Kakao transcoord API) ──────
+def build_map_image_url(lat: str, lng: str) -> str:
+    """WGS84 좌표를 CONGNAMUL로 변환하여 Kakao Map 정적 이미지 URL을 생성한다."""
+    headers = {"Authorization": KAKAO_KEY, "KA": KAKAO_KA}
+    try:
+        resp = requests.get(
+            "https://dapi.kakao.com/v2/local/geo/transcoord.json",
+            params={"x": lng, "y": lat, "input_coord": "WGS84", "output_coord": "WCONGNAMUL"},
+            headers=headers,
+        )
+        if resp.status_code == 200:
+            docs = resp.json().get("documents", [])
+            if docs:
+                mx = round(docs[0]["x"])
+                my = round(docs[0]["y"])
+                return (
+                    f"http://map2.daum.net/map/imageservice?"
+                    f"IW=704&IH=321&MX={mx}&MY={my}&SCALE=2.5"
+                    f"&CX={mx}&CY={my}&service=open"
+                )
+    except Exception:
+        pass
+    return ""
+
+
 # ── 주소 → 좌표 변환 (Kakao API) ─────────────────────
 
 
@@ -387,11 +415,21 @@ def submit_report(args):
         "X-Requested-With": "XMLHttpRequest",
     })
 
-    # 1. 세션 초기화 (JSESSIONID 확보)
-    # GET / → WMONID만 생성, JSP 접근해야 JSESSIONID 생성됨
+    # 1. 세션 초기화 (JSESSIONID 확보 + safepeople.visitr 쿠키 + pageview 호출)
     print("[1/6] 세션 초기화...")
     session.get(f"{BASE_URL}/")
     session.get(HANDLER_URL)
+    # safepeople.visitr 쿠키 설정 (브라우저 JS가 생성하는 세션키)
+    now_str = datetime.now().strftime("%Y%m%d%H%M%S")
+    rand_digits = "".join([str(random.randint(0,9)) for _ in range(16)])
+    visitr_key = now_str + rand_digits
+    session.cookies.set("safepeople.visitr",
+                        f'{{"sesionKey":"{visitr_key}"}}',
+                        domain="www.safetyreport.go.kr", path="/")
+    # pageview API 호출 (서버 세션 상태 초기화)
+    session.post(f"{BASE_URL}/api/v1/common/pageview",
+                 data="viewUrl=%2Fsafereport%2Fsafereport3&realUrl=%2Fsafereport%2FsafeReport3&pageViewSe=list&globals=&inflowCours=1",
+                 headers={"Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"})
 
     # 2. 파일 업로드
     stored_names = []
@@ -437,6 +475,10 @@ def submit_report(args):
     print(f"  도로명: {road_addr}")
     print(f"  지번: {jibun_addr}")
     print(f"  좌표: ({geo['lat']}, {geo['lng']})")
+    # 지도 이미지 URL 생성 (STTEMNT_IMAGE_URL)
+    map_image_url = build_map_image_url(geo["lat"], geo["lng"])
+    if map_image_url:
+        print(f"  지도 이미지: {map_image_url[:60]}...")
 
     # 4. SMS 인증
     phone = args.phone
@@ -489,7 +531,21 @@ def submit_report(args):
     c_files = "|".join(stored_names) if stored_names else ""
     c_r_files = "|".join(real_names) if real_names else ""
     file_count = len(stored_names)
-    c_files_view = "|".join(["1"] * file_count + ["0"] * (4 - file_count))
+    # C_FILES_VIEW: 웹사이트는 선행 "1|" + 파일슬롯 4개 = 총 5개 요소
+    view_parts = ["1"]  # 선행 슬롯
+    for i in range(4):
+        view_parts.append("1" if i < file_count else "0")
+    c_files_view = "|".join(view_parts)
+
+    # C_R_FILES_TIME: 각 파일의 수정시간 (YYYY/MM/DD HH:MM:SS 형식)
+    file_times = []
+    if args.files:
+        for fpath in args.files:
+            fpath_exp = os.path.expanduser(fpath)
+            mtime = os.path.getmtime(fpath_exp)
+            dt = datetime.fromtimestamp(mtime)
+            file_times.append(dt.strftime("%Y/%m/%d %H:%M:%S"))
+    c_r_files_time = ""  # 브라우저에서도 빈 문자열로 전송
 
     # 발생일시 (미입력 시 사진 EXIF에서 추출, 그래도 없으면 현재 시간)
     exif_dt = None
@@ -514,77 +570,110 @@ def submit_report(args):
     else:
         devel_time = datetime.now().strftime("%H:%M")
 
-    # 신고 내용 메시지 구성
-    message = args.content
-    message += "\n\n\n\n"
-    message += f"* 차량번호 : {args.vehicle}\n"
-    message += f"* 발생일자 : {devel_date}\n"
-    message += f"* 발생시각 : {devel_time}\n"
-    message += f"* 위반장소 : {road_addr}\n\n"
-    message += "* 안전신문고 신고파일(사진·동영상) 촬영시간 및 경로 안내 *\n"
-    message += f"* 발생지역 위도:{geo['lat']} 경도:{geo['lng']}\n"
-    message += f"본 신고는 안전신문고 포털의 자동차·교통위반 신고-{report_label} 메뉴로 접수된 신고입니다."
+    # 신고 내용 메시지 구성 (웹사이트 형식에 맞춤, CRLF 줄바꿈)
+    # 브라우저에서는 C_A_CONTENTS에 메타데이터가 2번 반복됨
+    NL = "\r\n"
+    # 메타데이터 블록 (차량번호~접수경로 안내)
+    meta = ""
+    meta += f"* 차량번호 : {args.vehicle}{NL}"
+    meta += f"* 발생일자 : {devel_date}{NL}"
+    meta += f"* 발생시각 : {devel_time}{NL}"
+    meta += f"* 위반장소 : {road_addr}{NL}{NL}"
+    meta += f"* 안전신문고 신고파일(사진·동영상) 촬영시간 및 경로 안내 *{NL}"
+    for i, ft in enumerate(file_times):
+        meta += f"* ({i+1}/{len(file_times)}) G: {ft}{NL}"
+    meta += f"* 발생지역 위도:{geo['lat']} 경도:{geo['lng']}{NL}"
+    meta += f"* G:휴대폰(안전신문고 앱 제외) 또는 PC에 저장된 사진·동영상{NL}"
+    meta += f"* C:안전신문고 앱으로 현장에서 촬영 후 바로 신고한 사진·동영상{NL}"
+    meta += f"* S:안전신문고 앱으로 촬영 및 저장 후 신고한 사진·동영상{NL}"
+    meta += f"* 안전신문고 앱으로 촬영한 사진은 촬영 일시가 자동으로 표기되고, 위·변조 방지기능을 탑재{NL}{NL}"
+    meta += f"(( 신고인 개인정보 보호 안내 - 개인정보보호법 제 17조, 민원처리에 관한 법률 제7조 )){NL}"
+    meta += f"* 신고인 정보 등 개인정보와 신고내용은 신고처리 및 관리 목적으로만 사용하여야 하며, 정보주체의 동의 없이 무단으로 제3자에게 제공할 수 없으니 처리기관에서는 개인정보 관리에 철저를 기해 주시기 바랍니다.{NL}{NL}"
+    meta += f"(( 불법주정차, 교통위반, 불법자동차 신고 제도(처분 기준 및 근거법령 해석 등) 관련 문의 )){NL}"
+    meta += f"* 과태료, 범칙금 부과 등 처분 : 각 지자체 및 경찰서{NL}"
+    meta += f"* 6대 불법 주정차 : 행정안전부 예방안전제도과, 044-205-4504{NL}"
+    meta += f"* 소방차전용구역 불법주차 : 소방청 화재대응조사과, 044-205-7473{NL}"
+    meta += f"* 장애인전용구역 불법주차 : 보건복지부 장애인권익지원과, 044-202-3308{NL}"
+    meta += f"* 친환경차 충전구역 불법주차 : 산업통상자원부 자동차과, 044-203-4325{NL}"
+    meta += f"* 불법자동차 : 국토교통부 자동차운영보험과, 044-201-3861{NL}"
+    meta += f"* 교통위반 : 경찰청 교통안전과, 02-3150-2852{NL}{NL}"
+    meta += f"(( 신고 접수경로 안내 )){NL}"
+    meta += f"본 신고는 안전신문고 포털의 자동차·교통위반 신고-{report_label} 메뉴로 접수된 신고입니다."
 
-    form_data = {
-        "ReportTypeSelect": report_code,
-        "C_SSNPC_CD": "TV",
-        "C_SSNPC_TYPE": report_code,
-        "SMS_CRTFC_ID": sms_crtfc_id,
-        "SMS_CRTFC_AT": "Y",
-        "C_A_W": geo["lat"],
-        "C_A_E": geo["lng"],
-        "C_ZIP": geo["zip_code"],
-        "C_ZIP_TYPE": "R",
-        "RN_ADRES": road_addr,
-        "C_A_ADD1": "",
-        "C_A_ADD2": jibun_addr,
-        "C_ADD1": "",
-        "C_ADD2": "",
-        "C_A_TITLE": args.title,
-        "C_A_CONTENTS": message,
-        "ORGNL_C_A_CONTENTS": args.content,
-        "VHRNO": args.vehicle.replace(" ", ""),
-        "noVhrNo": "",
-        "DEVEL_DATE": devel_date,
-        "DEVEL_TIME": devel_time,
-        "DEVEL_TIME_HH": devel_time.split(":")[0],
-        "DEVEL_TIME_MM": devel_time.split(":")[1] if ":" in devel_time else "00",
-        "C_PHONE2": phone,
-        "AUTH_NUMBER": "",
-        "C_OPEN": "0",           # 신고내용 공유: 예
-        "D_OPEN": "1",           # 처리기관 자동 배정
-        "E_OPEN": "SEARCH",
-        "instSearchWord": "",
-        "C_GROUP_NAME": "",
-        "C_A_ORG_NAME": "",
-        "C_A_ORG": "",
-        "C_CORONA": "",
-        "C_CORONA_VAL": "",
-        "C_FILES": c_files,
-        "C_FILES_VIEW": c_files_view,
-        "C_R_FILES": c_r_files,
-        "C_R_FILES_TIME": "",
-        "C_ID": phone_bare,
-        "INSTT_CODE": "",
-        "SEHIGH_INSTT_CODE": "",
-        "BEST_INSTT_CODE": "",
-        "GRP_ENTRPRS_CODE": "",
-        "C_RELATION2": "1",      # 개인
-        "C_RELATION3": "",
-        "STTEMNT_IMAGE_URL": "",
-        "NFVNZ_CD": "",
-        "SIDO_INSTT_CODE": "",
-        "SIGUNGU_INSTT_CODE": "",
-        "PROCESS_NTCN_YN": "Y",
-        "C_TYPE": "0",           # 개인
-        "C_NAME": args.name or "",
-        "C_EMAIL": "",
-        "emailSelect": "",
-        "agreeUseMyInfo": "Y",
-        "C_TMPFLAG": "",
-    }
+    # message = 원본 내용 + 메타데이터 1회 (ORGNL_C_A_CONTENTS 2번째 값)
+    message = args.content + NL * 4 + meta
+    # c_a_contents = 원본 내용 + 메타데이터 2회 (브라우저 동작 재현)
+    c_a_contents = message + NL * 4 + meta
 
-    resp = session.post(REPORT_URL, data=form_data)
+    # 폼 데이터를 튜플 리스트로 구성 (필드 순서 및 중복 키 지원)
+    # 브라우저: serialize() 결과 + 끝에 ORGNL_C_A_CONTENTS(2개) + C_PHONE2 + C_TMPFLAG 추가
+    form_data = [
+        ("ReportTypeSelect", report_code),
+        ("C_SSNPC_CD", "TV"),
+        ("C_SSNPC_TYPE", report_code),
+        ("SMS_CRTFC_ID", sms_crtfc_id),
+        ("SMS_CRTFC_AT", "Y"),
+        ("C_A_W", geo["lat"]),
+        ("C_A_E", geo["lng"]),
+        ("C_ZIP", geo["zip_code"]),
+        ("C_ZIP_TYPE", "R"),
+        ("RN_ADRES", road_addr),
+        ("C_A_ADD1", ""),
+        ("C_A_ADD2", jibun_addr),
+        ("C_ADD1", ""),
+        ("C_ADD2", ""),
+        ("C_A_TITLE", args.title),
+        ("C_A_CONTENTS", c_a_contents),
+        ("VHRNO", args.vehicle.replace(" ", "")),
+        ("noVhrNo", ""),
+        ("DEVEL_DATE", devel_date),
+        ("DEVEL_TIME", devel_time),
+        ("DEVEL_TIME_HH", devel_time.split(":")[0]),
+        ("DEVEL_TIME_MM", devel_time.split(":")[1] if ":" in devel_time else "00"),
+        ("AUTH_NUMBER", auth_code),
+        ("C_OPEN", "0"),
+        ("D_OPEN", "1"),
+        ("E_OPEN", "T10000"),
+        ("instSearchWord", ""),
+        ("C_GROUP_NAME", ""),
+        ("C_A_ORG_NAME", ""),
+        ("C_A_ORG", ""),
+        ("C_CORONA", ""),
+        ("C_CORONA_VAL", ""),
+        ("C_FILES", c_files),
+        ("C_FILES_VIEW", c_files_view),
+        ("C_R_FILES", c_r_files),
+        ("C_R_FILES_TIME", c_r_files_time),
+        ("C_ID", phone_bare),
+        ("INSTT_CODE", ""),
+        ("SEHIGH_INSTT_CODE", ""),
+        ("BEST_INSTT_CODE", ""),
+        ("GRP_ENTRPRS_CODE", ""),
+        ("C_RELATION2", "1"),
+        ("C_RELATION3", ""),
+        ("STTEMNT_IMAGE_URL", map_image_url),
+        ("NFVNZ_CD", ""),
+        ("SIDO_INSTT_CODE", ""),
+        ("SIGUNGU_INSTT_CODE", ""),
+        ("PROCESS_NTCN_YN", "Y"),
+        ("C_TYPE", "0"),
+        ("C_NAME", args.name or ""),
+        ("C_EMAIL", ""),
+        ("emailSelect", "선택하세요"),
+        ("agreeUseMyInfo", "Y"),
+        # 이하 필드는 브라우저에서 serialize() 이후 추가되는 필드들
+        ("ORGNL_C_A_CONTENTS", args.content),       # 1st: 원본 내용만
+        ("ORGNL_C_A_CONTENTS", message),             # 2nd: 원본 + 메타데이터
+        ("C_PHONE2", phone),
+        ("C_TMPFLAG", ""),
+    ]
+
+    # jQuery 3.0 호환 인코딩: 공백을 + 대신 %20으로 인코딩
+    encoded_body = urllib.parse.urlencode(form_data, quote_via=urllib.parse.quote)
+
+    resp = session.post(REPORT_URL, data=encoded_body,
+                        headers={"Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"})
+
     result = resp.json()
 
     if result.get("result") == "success":
