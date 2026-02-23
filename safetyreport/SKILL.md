@@ -84,7 +84,7 @@ python3 scripts/safetyreport.py
 
 1. **세션 초기화** - safetyreport.go.kr 접속하여 쿠키 획득
 2. **파일 업로드** - RAONKUpload 3단계 프로토콜(preUpload→청크전송→endUpload)로 업로드
-3. **주소 변환** - Kakao API로 주소→좌표/도로명/지번 변환 (또는 EXIF GPS→역지오코딩)
+3. **주소 변환** - Kakao API로 주소→좌표/도로명/지번 변환 (또는 EXIF GPS→역지오코딩). 발생일시 미입력 시 사진 EXIF 촬영일시도 자동 추출
 4. **SMS 인증 요청** - `/api/v1/portal/common/sms`로 인증번호 발송 (문자)
 5. **인증번호 자동 읽기** - iMessage DB(`~/Library/Messages/chat.db`)에서 발신번호 `1600-7395`의 인증번호 자동 추출 (최대 90초 대기, 실패 시 수동 입력 fallback)
 6. **신고서 제출** - `/api/v1/portal/safereport/safereport`로 폼 데이터 POST
@@ -103,7 +103,7 @@ python3 scripts/safetyreport.py
 ## 주의사항
 
 - **불법 주정차 신고는 앱 전용**: 안전신문고 포털(웹)에서는 불법 주정차 신고를 접수하지 않음
-- **사진 EXIF GPS**: 실내 촬영 사진이나 위치 정보가 제거된 사진에서는 GPS 추출 불가
+- **사진 EXIF GPS/일시**: 실내 촬영 사진이나 위치 정보가 제거된 사진에서는 GPS 추출 불가. 촬영일시(DateTimeOriginal)도 EXIF에서 자동 추출
 - **허용 파일 형식**: png, jpg, jpeg, gif, bmp, mp4, wmv, avi, asf, flv, mov, mpeg, mpg, mkv, 3gp, m4v
 - **파일 크기 제한**: 사진/문서 각 30MB, 동영상 각 130MB, 총합 180MB, 최대 4개 파일
 - **인증 유효시간**: SMS 인증번호는 5분간 유효

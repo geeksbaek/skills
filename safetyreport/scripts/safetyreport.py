@@ -271,6 +271,31 @@ def extract_gps_from_exif(filepath: str) -> tuple[float, float] | None:
         return None
 
 
+def extract_datetime_from_exif(filepath: str) -> tuple[str, str] | None:
+    """사진 파일의 EXIF에서 촬영 일시를 추출한다. (date, time) 튜플 반환."""
+    try:
+        from PIL import Image
+        from PIL.ExifTags import TAGS
+    except ImportError:
+        return None
+
+    try:
+        img = Image.open(filepath)
+        exif_data = img._getexif()
+        if not exif_data:
+            return None
+
+        for tag_id, value in exif_data.items():
+            tag = TAGS.get(tag_id)
+            if tag == "DateTimeOriginal" or tag == "DateTimeDigitized":
+                # EXIF 형식: "2026:02:23 13:16:00"
+                dt = datetime.strptime(value, "%Y:%m:%d %H:%M:%S")
+                return (dt.strftime("%Y.%m.%d."), dt.strftime("%H:%M"))
+        return None
+    except Exception:
+        return None
+
+
 def reverse_geocode(lat: float, lng: float) -> dict | None:
     """좌표를 Kakao API로 도로명/지번 주소로 변환한다."""
     headers = {"Authorization": KAKAO_KEY, "KA": KAKAO_KA}
@@ -448,14 +473,26 @@ def submit_report(args):
     file_count = len(stored_names)
     c_files_view = "|".join(["1"] * file_count + ["0"] * (4 - file_count))
 
-    # 발생일시
+    # 발생일시 (미입력 시 사진 EXIF에서 추출, 그래도 없으면 현재 시간)
+    exif_dt = None
+    if (not args.date or not args.time) and args.files:
+        for fpath in args.files:
+            exif_dt = extract_datetime_from_exif(os.path.expanduser(fpath))
+            if exif_dt:
+                print(f"  EXIF 촬영일시: {exif_dt[0]} {exif_dt[1]} (from {os.path.basename(fpath)})")
+                break
+
     if args.date:
         devel_date = args.date
+    elif exif_dt:
+        devel_date = exif_dt[0]
     else:
         devel_date = datetime.now().strftime("%Y.%m.%d.")
 
     if args.time:
         devel_time = args.time
+    elif exif_dt:
+        devel_time = exif_dt[1]
     else:
         devel_time = datetime.now().strftime("%H:%M")
 
