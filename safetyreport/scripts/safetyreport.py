@@ -168,10 +168,24 @@ def upload_file(session: requests.Session, filepath: str, index: int, is_last: b
         raise RuntimeError(f"endUpload 실패: {result}")
 
     ok_data = raonk_decrypt(result.replace("[OK]", ""))
+    ok_data = ok_data.strip().rstrip(FF)
+
+    # endUpload 응답 파싱: VT 구분 또는 콜론 구분 형식 모두 지원
     rp = ok_data.split(VT)
-    upload_name = rp[1] if len(rp) > 1 else ""
-    origin_name = rp[2] if len(rp) > 2 else filename
-    uploaded_size = rp[3] if len(rp) > 3 else str(file_size)
+    if len(rp) >= 3:
+        upload_name = rp[1]
+        origin_name = rp[2] if rp[2] else filename
+        uploaded_size = rp[3] if len(rp) > 3 else str(file_size)
+    elif ":" in ok_data:
+        parts = ok_data.split(":", 1)
+        origin_name = parts[0] if parts[0] else filename
+        save_path_end = parts[1] if len(parts) > 1 else ""
+        upload_name = save_path_end.rsplit("/", 1)[-1] if "/" in save_path_end else save_path_end
+        uploaded_size = str(file_size)
+    else:
+        upload_name = ok_data
+        origin_name = filename
+        uploaded_size = str(file_size)
     print(f"  [{index+1}] 업로드 완료: {origin_name} ({uploaded_size} bytes)")
 
     return {"uploadName": upload_name, "originName": origin_name, "size": uploaded_size}
@@ -367,13 +381,17 @@ def geocode_address(address: str) -> dict | None:
 def submit_report(args):
     session = requests.Session()
     session.headers.update({
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
         "Referer": f"{BASE_URL}/",
+        "Origin": BASE_URL,
+        "X-Requested-With": "XMLHttpRequest",
     })
 
-    # 1. 세션 초기화 (쿠키 획득)
+    # 1. 세션 초기화 (JSESSIONID 확보)
+    # GET / → WMONID만 생성, JSP 접근해야 JSESSIONID 생성됨
     print("[1/6] 세션 초기화...")
     session.get(f"{BASE_URL}/")
+    session.get(HANDLER_URL)
 
     # 2. 파일 업로드
     stored_names = []
@@ -508,6 +526,7 @@ def submit_report(args):
     message += f"본 신고는 안전신문고 포털의 자동차·교통위반 신고-{report_label} 메뉴로 접수된 신고입니다."
 
     form_data = {
+        "ReportTypeSelect": report_code,
         "C_SSNPC_CD": "TV",
         "C_SSNPC_TYPE": report_code,
         "SMS_CRTFC_ID": sms_crtfc_id,
@@ -523,6 +542,7 @@ def submit_report(args):
         "C_ADD2": "",
         "C_A_TITLE": args.title,
         "C_A_CONTENTS": message,
+        "ORGNL_C_A_CONTENTS": args.content,
         "VHRNO": args.vehicle.replace(" ", ""),
         "noVhrNo": "",
         "DEVEL_DATE": devel_date,
@@ -530,17 +550,36 @@ def submit_report(args):
         "DEVEL_TIME_HH": devel_time.split(":")[0],
         "DEVEL_TIME_MM": devel_time.split(":")[1] if ":" in devel_time else "00",
         "C_PHONE2": phone,
+        "AUTH_NUMBER": "",
         "C_OPEN": "0",           # 신고내용 공유: 예
+        "D_OPEN": "1",           # 처리기관 자동 배정
+        "E_OPEN": "SEARCH",
+        "instSearchWord": "",
+        "C_GROUP_NAME": "",
+        "C_A_ORG_NAME": "",
+        "C_A_ORG": "",
+        "C_CORONA": "",
+        "C_CORONA_VAL": "",
         "C_FILES": c_files,
-        "C_R_FILES": c_r_files,
         "C_FILES_VIEW": c_files_view,
+        "C_R_FILES": c_r_files,
+        "C_R_FILES_TIME": "",
         "C_ID": phone_bare,
+        "INSTT_CODE": "",
+        "SEHIGH_INSTT_CODE": "",
+        "BEST_INSTT_CODE": "",
+        "GRP_ENTRPRS_CODE": "",
         "C_RELATION2": "1",      # 개인
         "C_RELATION3": "",
+        "STTEMNT_IMAGE_URL": "",
+        "NFVNZ_CD": "",
+        "SIDO_INSTT_CODE": "",
+        "SIGUNGU_INSTT_CODE": "",
         "PROCESS_NTCN_YN": "Y",
         "C_TYPE": "0",           # 개인
         "C_NAME": args.name or "",
         "C_EMAIL": "",
+        "emailSelect": "",
         "agreeUseMyInfo": "Y",
         "C_TMPFLAG": "",
     }
