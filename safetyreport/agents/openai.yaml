@@ -1,0 +1,4 @@
+interface:
+  display_name: "안전신문고 교통위반 신고"
+  short_description: "File traffic violation reports on safetyreport.go.kr via CLI."
+  default_prompt: "Use $safetyreport to file a traffic violation report on 안전신문고."
