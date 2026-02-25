@@ -34,6 +34,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import cheongdamEmbeddedRaw from "@/embedded/cheongdam-2026-02-20.json?raw"
 import gwanggyoEmbeddedRaw from "@/embedded/gwanggyo-2026-02-20.json?raw"
 import pangyoEmbeddedRaw from "@/embedded/pangyo-2026-02-20.json?raw"
+import haenggungEmbeddedRaw from "@/embedded/haenggung-2026-02-26.json?raw"
 
 type ColumnType = "text" | "number" | "boolean"
 type RawRecord = Record<string, unknown>
@@ -338,6 +339,12 @@ const EMBEDDED_DATASETS: EmbeddedDataset[] = [
     label: "판교 (2026-02-20)",
     filename: "pangyo-2026-02-20.json",
     jsonText: pangyoEmbeddedRaw,
+  },
+  {
+    id: "haenggung-2026-02-26",
+    label: "행궁동 (2026-02-26)",
+    filename: "haenggung-2026-02-26.json",
+    jsonText: haenggungEmbeddedRaw,
   },
 ]
 
