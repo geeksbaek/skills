@@ -1182,7 +1182,12 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null)
-  const [selectedEmbeddedDatasetId, setSelectedEmbeddedDatasetId] = useState<string>(EMBEDDED_DATASETS[0]?.id ?? "")
+  const [selectedEmbeddedDatasetId, setSelectedEmbeddedDatasetId] = useState<string>(() => {
+    const params = new URLSearchParams(window.location.search)
+    const datasetParam = params.get("dataset")
+    if (datasetParam && EMBEDDED_DATASETS.some((d) => d.id === datasetParam)) return datasetParam
+    return EMBEDDED_DATASETS[0]?.id ?? ""
+  })
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const centerSearchSeqRef = useRef(0)
@@ -1509,6 +1514,19 @@ function App() {
     setSelectedFileName(`${selectedEmbeddedDataset.filename} (내장)`)
     loadJsonText(selectedEmbeddedDataset.jsonText)
   }, [loadJsonText, loading, selectedEmbeddedDataset])
+
+  const autoLoadDoneRef = useRef(false)
+  useEffect(() => {
+    if (autoLoadDoneRef.current || loading) return
+    const params = new URLSearchParams(window.location.search)
+    const datasetParam = params.get("dataset")
+    if (!datasetParam) return
+    const target = EMBEDDED_DATASETS.find((d) => d.id === datasetParam)
+    if (!target) return
+    autoLoadDoneRef.current = true
+    setSelectedFileName(`${target.filename} (내장)`)
+    loadJsonText(target.jsonText)
+  }, [loading, loadJsonText])
 
   useEffect(() => {
     const onDragOver = (event: DragEvent) => {
