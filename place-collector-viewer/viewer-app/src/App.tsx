@@ -35,6 +35,7 @@ import cheongdamEmbeddedRaw from "@/embedded/cheongdam-2026-02-20.json?raw"
 import gwanggyoEmbeddedRaw from "@/embedded/gwanggyo-2026-02-20.json?raw"
 import pangyoEmbeddedRaw from "@/embedded/pangyo-2026-02-20.json?raw"
 import haenggungEmbeddedRaw from "@/embedded/haenggung-2026-02-26.json?raw"
+import daebudoPensionEmbeddedRaw from "@/embedded/daebudo-pension-2026-02-26.json?raw"
 
 type ColumnType = "text" | "number" | "boolean"
 type RawRecord = Record<string, unknown>
@@ -345,6 +346,12 @@ const EMBEDDED_DATASETS: EmbeddedDataset[] = [
     label: "행궁동 (2026-02-26)",
     filename: "haenggung-2026-02-26.json",
     jsonText: haenggungEmbeddedRaw,
+  },
+  {
+    id: "daebudo-pension-2026-02-26",
+    label: "대부도 펜션 (2026-02-26)",
+    filename: "daebudo-pension-2026-02-26.json",
+    jsonText: daebudoPensionEmbeddedRaw,
   },
 ]
 
