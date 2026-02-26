@@ -1514,7 +1514,7 @@ function App() {
     return () => window.clearTimeout(timer)
   }, [centerSearchInput, centerSearchSelectOpen, searchDistanceCenter])
 
-  const loadJsonText = useCallback((text: string) => {
+  const loadJsonText = useCallback((text: string, preserveFilters = false) => {
     setLoading(true)
     setTimeout(() => {
       try {
@@ -1523,16 +1523,18 @@ function App() {
 
         rawMapRef.current = rawMap
         setRows(nextRows)
-        setSorting([])
-        setSelectedConveniences([])
-        setAdvancedRules([])
-        setNextRuleId(1)
-        clearDistanceCenter()
-        setCenterSearchResults([])
-        setCenterSearchInput("")
-        setCenterSearchStatus({ message: "주소/건물명을 검색하고 옵션에서 선택하면 거리를 계산합니다.", tone: "muted" })
-        setTopKeywordFilter("all")
-        setPriceCategoryFilter("all")
+        if (!preserveFilters) {
+          setSorting([])
+          setSelectedConveniences([])
+          setAdvancedRules([])
+          setNextRuleId(1)
+          clearDistanceCenter()
+          setCenterSearchResults([])
+          setCenterSearchInput("")
+          setCenterSearchStatus({ message: "주소/건물명을 검색하고 옵션에서 선택하면 거리를 계산합니다.", tone: "muted" })
+          setTopKeywordFilter("all")
+          setPriceCategoryFilter("all")
+        }
         setStatusError(null)
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
@@ -1572,7 +1574,7 @@ function App() {
     if (!target) return
     autoLoadDoneRef.current = true
     setSelectedFileName(`${target.filename} (내장)`)
-    loadJsonText(target.jsonText)
+    loadJsonText(target.jsonText, true)
   }, [loading, loadJsonText])
 
   useEffect(() => {
