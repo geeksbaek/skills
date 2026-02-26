@@ -1292,16 +1292,16 @@ function App() {
   )
 
   useEffect(() => {
-    if (topKeywordFilter !== "all" && !topKeywordCatalog.some((item) => item.keyword === topKeywordFilter)) {
+    if (rows.length > 0 && topKeywordFilter !== "all" && !topKeywordCatalog.some((item) => item.keyword === topKeywordFilter)) {
       setTopKeywordFilter("all")
     }
-  }, [topKeywordCatalog, topKeywordFilter])
+  }, [rows.length, topKeywordCatalog, topKeywordFilter])
 
   useEffect(() => {
-    if (priceCategoryFilter !== "all" && !priceEmojiCatalog.some((item) => item.emoji === priceCategoryFilter)) {
+    if (rows.length > 0 && priceCategoryFilter !== "all" && !priceEmojiCatalog.some((item) => item.emoji === priceCategoryFilter)) {
       setPriceCategoryFilter("all")
     }
-  }, [priceEmojiCatalog, priceCategoryFilter])
+  }, [rows.length, priceEmojiCatalog, priceCategoryFilter])
 
   const referenceDateTime = useMemo(() => getReferenceDateTime(refDate, refTime), [refDate, refTime])
   const keywords = useMemo(() => parseSearchKeywords(debouncedSearch), [debouncedSearch])
