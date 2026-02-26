@@ -28,7 +28,6 @@ jobs:
 
       - name: Prepare Site
         run: |
-          cp place-collector-viewer/assets/place-datagrid-view.html place-collector-viewer/assets/index.html
           touch place-collector-viewer/assets/.nojekyll
 
       - name: Setup Pages
