@@ -307,6 +307,8 @@ const TOOLTIP_TRIGGER_BUTTON_CLASS = "appearance-none border-0 bg-transparent p-
 
 const DEFAULT_MIN_REVIEW = 50
 const DEFAULT_MAX_DISTANCE: number | null = null
+
+const INIT_PARAMS = new URLSearchParams(window.location.search)
 const ACTIVE_FIELD_CLASS = "h-8"
 const APP_SURFACE_CLASS = "h-dvh overflow-hidden bg-[radial-gradient(circle_at_0%_0%,rgba(15,118,110,0.14),transparent_42%),radial-gradient(circle_at_100%_0%,rgba(59,130,246,0.14),transparent_40%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] p-4 md:p-6"
 const APP_CONTENT_CLASS = "mx-auto flex h-full min-h-0 min-w-0 w-full max-w-[1600px] flex-col gap-4"
@@ -1141,36 +1143,74 @@ function App() {
   const now = useMemo(() => new Date(), [])
 
   const [rows, setRows] = useState<PlaceRow[]>([])
-  const [sorting, setSorting] = useState<SortingState>([])
+  const [sorting, setSorting] = useState<SortingState>(() => {
+    const v = INIT_PARAMS.get("sort")
+    if (!v) return []
+    return v.split(",").map((s) => {
+      const [id, dir] = s.split(":")
+      return { id, desc: dir === "desc" }
+    }).filter((s) => s.id)
+  })
 
-  const [searchInput, setSearchInput] = useState("")
-  const [minReviewPreset, setMinReviewPreset] = useState(DEFAULT_MIN_REVIEW)
-  const [maxDistancePreset, setMaxDistancePreset] = useState<number | null>(DEFAULT_MAX_DISTANCE)
+  const [searchInput, setSearchInput] = useState(() => INIT_PARAMS.get("q") ?? "")
+  const [minReviewPreset, setMinReviewPreset] = useState(() => {
+    const v = INIT_PARAMS.get("minReview")
+    return v != null ? Number(v) : DEFAULT_MIN_REVIEW
+  })
+  const [maxDistancePreset, setMaxDistancePreset] = useState<number | null>(() => {
+    const v = INIT_PARAMS.get("maxDist")
+    return v != null ? Number(v) : DEFAULT_MAX_DISTANCE
+  })
 
   const [centerSearchInput, setCenterSearchInput] = useState("")
   const [centerSearchResults, setCenterSearchResults] = useState<CenterSearchResult[]>([])
   const [selectedCenterSearchResultId, setSelectedCenterSearchResultId] = useState("")
   const [centerSearchSelectOpen, setCenterSearchSelectOpen] = useState(false)
   const [centerSearchLoading, setCenterSearchLoading] = useState(false)
-  const [centerSearchStatus, setCenterSearchStatus] = useState<{ message: string; tone: CenterStatusTone }>({
-    message: "주소/건물명을 검색하고 옵션에서 선택하면 거리를 계산합니다.",
-    tone: "muted",
+  const [distanceCenter, setDistanceCenter] = useState<{ x: number; y: number } | null>(() => {
+    const v = INIT_PARAMS.get("center")
+    if (!v) return null
+    const [xs, ys] = v.split(",")
+    const x = Number(xs), y = Number(ys)
+    return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null
+  })
+  const [centerSearchStatus, setCenterSearchStatus] = useState<{ message: string; tone: CenterStatusTone }>(() => {
+    if (distanceCenter) return { message: `URL에서 좌표 복원: (${distanceCenter.x.toFixed(5)}, ${distanceCenter.y.toFixed(5)})`, tone: "ok" as const }
+    return { message: "주소/건물명을 검색하고 옵션에서 선택하면 거리를 계산합니다.", tone: "muted" as const }
   })
 
-  const [distanceCenter, setDistanceCenter] = useState<{ x: number; y: number } | null>(null)
+  const [refDate, setRefDate] = useState(() => INIT_PARAMS.get("date") ?? toInputDate(now))
+  const [refTime, setRefTime] = useState(() => INIT_PARAMS.get("time") ?? toInputTime(now))
+  const [refOpenMode, setRefOpenMode] = useState(() => INIT_PARAMS.get("openMode") ?? "all")
+  const [topKeywordFilter, setTopKeywordFilter] = useState(() => INIT_PARAMS.get("keyword") ?? "all")
+  const [priceCategoryFilter, setPriceCategoryFilter] = useState(() => INIT_PARAMS.get("price") ?? "all")
 
-  const [refDate, setRefDate] = useState(toInputDate(now))
-  const [refTime, setRefTime] = useState(toInputTime(now))
-  const [refOpenMode, setRefOpenMode] = useState("all")
-  const [topKeywordFilter, setTopKeywordFilter] = useState("all")
-  const [priceCategoryFilter, setPriceCategoryFilter] = useState("all")
+  const [convenienceMode, setConvenienceMode] = useState<RuleMode>(() => {
+    const v = INIT_PARAMS.get("convMode")
+    return v === "any" ? "any" : "all"
+  })
+  const [selectedConveniences, setSelectedConveniences] = useState<string[]>(() => {
+    const v = INIT_PARAMS.get("conv")
+    return v ? v.split(",").filter(Boolean) : []
+  })
 
-  const [convenienceMode, setConvenienceMode] = useState<RuleMode>("all")
-  const [selectedConveniences, setSelectedConveniences] = useState<string[]>([])
-
-  const [advMode, setAdvMode] = useState<RuleMode>("all")
-  const [advancedRules, setAdvancedRules] = useState<AdvancedRule[]>([])
-  const [nextRuleId, setNextRuleId] = useState(1)
+  const [advMode, setAdvMode] = useState<RuleMode>(() => {
+    const v = INIT_PARAMS.get("advMode")
+    return v === "any" ? "any" : "all"
+  })
+  const [advancedRules, setAdvancedRules] = useState<AdvancedRule[]>(() => {
+    const v = INIT_PARAMS.get("rules")
+    if (!v) return []
+    try { return JSON.parse(v) } catch { return [] }
+  })
+  const [nextRuleId, setNextRuleId] = useState(() => {
+    const v = INIT_PARAMS.get("rules")
+    if (!v) return 1
+    try {
+      const rules: AdvancedRule[] = JSON.parse(v)
+      return rules.length ? Math.max(...rules.map((r) => r.id)) + 1 : 1
+    } catch { return 1 }
+  })
 
   const [statusError, setStatusError] = useState<string | null>(null)
   const [convenienceDialogOpen, setConvenienceDialogOpen] = useState(false)
@@ -1187,7 +1227,7 @@ function App() {
       : false
   )
   const [loading, setLoading] = useState(false)
-  const [debouncedSearch, setDebouncedSearch] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState(() => INIT_PARAMS.get("q") ?? "")
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null)
   const [selectedEmbeddedDatasetId, setSelectedEmbeddedDatasetId] = useState<string>(() => {
     const params = new URLSearchParams(window.location.search)
@@ -1534,6 +1574,28 @@ function App() {
     setSelectedFileName(`${target.filename} (내장)`)
     loadJsonText(target.jsonText)
   }, [loading, loadJsonText])
+
+  useEffect(() => {
+    const p = new URLSearchParams()
+    const defaultDatasetId = EMBEDDED_DATASETS[0]?.id ?? ""
+    if (selectedEmbeddedDatasetId && selectedEmbeddedDatasetId !== defaultDatasetId) p.set("dataset", selectedEmbeddedDatasetId)
+    if (searchInput) p.set("q", searchInput)
+    if (minReviewPreset !== DEFAULT_MIN_REVIEW) p.set("minReview", String(minReviewPreset))
+    if (maxDistancePreset != null) p.set("maxDist", String(maxDistancePreset))
+    if (distanceCenter) p.set("center", `${distanceCenter.x},${distanceCenter.y}`)
+    if (refDate !== toInputDate(now)) p.set("date", refDate)
+    if (refTime !== toInputTime(now)) p.set("time", refTime)
+    if (refOpenMode !== "all") p.set("openMode", refOpenMode)
+    if (topKeywordFilter !== "all") p.set("keyword", topKeywordFilter)
+    if (priceCategoryFilter !== "all") p.set("price", priceCategoryFilter)
+    if (convenienceMode !== "all") p.set("convMode", convenienceMode)
+    if (selectedConveniences.length) p.set("conv", selectedConveniences.join(","))
+    if (advMode !== "all") p.set("advMode", advMode)
+    if (advancedRules.length) p.set("rules", JSON.stringify(advancedRules))
+    if (sorting.length) p.set("sort", sorting.map((s) => `${s.id}:${s.desc ? "desc" : "asc"}`).join(","))
+    const qs = p.toString()
+    window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname)
+  }, [selectedEmbeddedDatasetId, searchInput, minReviewPreset, maxDistancePreset, distanceCenter, refDate, refTime, refOpenMode, topKeywordFilter, priceCategoryFilter, convenienceMode, selectedConveniences, advMode, advancedRules, sorting, now])
 
   useEffect(() => {
     const onDragOver = (event: DragEvent) => {
