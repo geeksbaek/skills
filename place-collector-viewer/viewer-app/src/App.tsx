@@ -31,12 +31,6 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import gwanggyoEmbeddedRaw from "@/embedded/gwanggyo-2026-02-20.json?raw"
-import pangyoEmbeddedRaw from "@/embedded/pangyo-2026-02-20.json?raw"
-import haenggungEmbeddedRaw from "@/embedded/haenggung-2026-02-26.json?raw"
-import daebudoPensionEmbeddedRaw from "@/embedded/daebudo-pension-2026-02-26.json?raw"
-import seoulPartyroomEmbeddedRaw from "@/embedded/seoul-partyroom-2026-02-26.json?raw"
-import petFriendlySeoulEmbeddedRaw from "@/embedded/pet-friendly-seoul-2026-03-14.json?raw"
 
 type ColumnType = "text" | "number" | "boolean"
 type RawRecord = Record<string, unknown>
@@ -77,7 +71,6 @@ interface EmbeddedDataset {
   id: string
   label: string
   filename: string
-  jsonText: string
 }
 
 interface PlaceRow {
@@ -326,41 +319,35 @@ const CENTER_SEARCH_ENDPOINT = "https://nominatim.openstreetmap.org/search"
 const CENTER_SEARCH_FALLBACK_ENDPOINT = "https://photon.komoot.io/api/"
 const CENTER_SEARCH_LIMIT = 8
 const EMBEDDED_DATASETS: EmbeddedDataset[] = [
-{
+  {
     id: "gwanggyo-2026-02-20",
     label: "광교 (2026-02-20)",
     filename: "gwanggyo-2026-02-20.json",
-    jsonText: gwanggyoEmbeddedRaw,
   },
   {
     id: "pangyo-2026-02-20",
     label: "판교 (2026-02-20)",
     filename: "pangyo-2026-02-20.json",
-    jsonText: pangyoEmbeddedRaw,
   },
   {
     id: "haenggung-2026-02-26",
     label: "행궁동 (2026-02-26)",
     filename: "haenggung-2026-02-26.json",
-    jsonText: haenggungEmbeddedRaw,
   },
   {
     id: "daebudo-pension-2026-02-26",
     label: "대부도 펜션 (2026-02-26)",
     filename: "daebudo-pension-2026-02-26.json",
-    jsonText: daebudoPensionEmbeddedRaw,
   },
   {
     id: "seoul-partyroom-2026-02-26",
     label: "서울 파티룸 (2026-02-26)",
     filename: "seoul-partyroom-2026-02-26.json",
-    jsonText: seoulPartyroomEmbeddedRaw,
   },
   {
     id: "pet-friendly-seoul-2026-03-14",
     label: "서울 반려동물 동반 (2026-03-14)",
     filename: "pet-friendly-seoul-2026-03-14.json",
-    jsonText: petFriendlySeoulEmbeddedRaw,
   },
 ]
 
@@ -1558,10 +1545,22 @@ function App() {
     reader.readAsText(file, "utf-8")
   }
 
-  const loadEmbeddedDataset = useCallback(() => {
+  const loadEmbeddedDataset = useCallback(async () => {
     if (!selectedEmbeddedDataset || loading) return
-    setSelectedFileName(`${selectedEmbeddedDataset.filename} (내장)`)
-    loadJsonText(selectedEmbeddedDataset.jsonText)
+    setSelectedFileName(`${selectedEmbeddedDataset.filename} (로딩중...)`)
+    setLoading(true)
+    try {
+      const base = import.meta.env.BASE_URL || "/"
+      const url = `${base}data/${selectedEmbeddedDataset.filename}`
+      const res = await fetch(url)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const text = await res.text()
+      setSelectedFileName(selectedEmbeddedDataset.filename)
+      loadJsonText(text)
+    } catch (e) {
+      setSelectedFileName(`${selectedEmbeddedDataset.filename} (로드 실패)`)
+      setLoading(false)
+    }
   }, [loadJsonText, loading, selectedEmbeddedDataset])
 
   const autoLoadDoneRef = useRef(false)
@@ -1573,8 +1572,19 @@ function App() {
     const target = EMBEDDED_DATASETS.find((d) => d.id === datasetParam)
     if (!target) return
     autoLoadDoneRef.current = true
-    setSelectedFileName(`${target.filename} (내장)`)
-    loadJsonText(target.jsonText, true)
+    setSelectedFileName(`${target.filename} (로딩중...)`)
+    setLoading(true)
+    const base = import.meta.env.BASE_URL || "/"
+    fetch(`${base}data/${target.filename}`)
+      .then((res) => res.text())
+      .then((text) => {
+        setSelectedFileName(target.filename)
+        loadJsonText(text, true)
+      })
+      .catch(() => {
+        setSelectedFileName(`${target.filename} (로드 실패)`)
+        setLoading(false)
+      })
   }, [loading, loadJsonText])
 
   useEffect(() => {
@@ -2015,7 +2025,7 @@ function App() {
                   key={dataset.id}
                   value={dataset.id}
                 >
-                  {dataset.label} ({formatBytesToLabel(dataset.jsonText.length)})
+                  {dataset.label}
                 </SelectItem>
               ))}
             </SelectContent>
