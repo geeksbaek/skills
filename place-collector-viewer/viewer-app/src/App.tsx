@@ -734,18 +734,22 @@ function normalizeRecord(raw: RawRecord, fallbackId: string, index: number): Pla
   const roadAddress = toText(raw.roadAddress)
   const commonAddress = toText(raw.commonAddress)
   const microReview = toText(raw.microReview)
-  const feedsSnippet = Array.isArray(raw.feeds)
-    ? raw.feeds.slice(0, 3).map((f: unknown) => {
+  const feedsText = Array.isArray(raw.feeds)
+    ? raw.feeds.map((f: unknown) => {
         const fd = f as { title?: string; desc?: string }
         return [fd.title, fd.desc].filter(Boolean).join(" ")
       }).join(" ")
     : ""
+  const keywordDisplayNames = Array.isArray(raw.details)
+    ? raw.details.map((d: unknown) => (d as { displayName?: string }).displayName || "").join(" ")
+    : ""
 
   const _searchText = [
     placeId, name, category, roadAddress, commonAddress, options, phone,
-    topKeyword.label, keywordText, openDescText, priceCategoryText,
+    topKeyword.label, keywordText, keywordDisplayNames,
+    openDescText, priceCategoryText,
     parkingDetail, detailConveniences, conveniencesTextVal,
-    broadcastInfo, microReview, regularClosedDays, feedsSnippet,
+    broadcastInfo, microReview, regularClosedDays, feedsText,
   ].join(" ").toLowerCase()
 
   return {
