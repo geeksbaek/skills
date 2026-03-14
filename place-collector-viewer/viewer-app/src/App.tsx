@@ -731,11 +731,21 @@ function normalizeRecord(raw: RawRecord, fallbackId: string, index: number): Pla
   const priceCategoryText = normalizePriceCategory(raw.priceCategory)
   const conveniencesTextVal = conveniences.join(", ")
 
+  const roadAddress = toText(raw.roadAddress)
+  const commonAddress = toText(raw.commonAddress)
+  const microReview = toText(raw.microReview)
+  const feedsSnippet = Array.isArray(raw.feeds)
+    ? raw.feeds.slice(0, 3).map((f: unknown) => {
+        const fd = f as { title?: string; desc?: string }
+        return [fd.title, fd.desc].filter(Boolean).join(" ")
+      }).join(" ")
+    : ""
+
   const _searchText = [
-    name, category, address, options, phone,
+    placeId, name, category, roadAddress, commonAddress, options, phone,
     topKeyword.label, keywordText, openDescText, priceCategoryText,
     parkingDetail, detailConveniences, conveniencesTextVal,
-    broadcastInfo,
+    broadcastInfo, microReview, regularClosedDays, feedsSnippet,
   ].join(" ").toLowerCase()
 
   return {
@@ -760,8 +770,8 @@ function normalizeRecord(raw: RawRecord, fallbackId: string, index: number): Pla
     openAtRefRank: 0,
     openAtRefCode: "unknown",
     address,
-    roadAddress: toText(raw.roadAddress),
-    commonAddress: toText(raw.commonAddress),
+    roadAddress,
+    commonAddress,
     phone,
     options,
     conveniences,
