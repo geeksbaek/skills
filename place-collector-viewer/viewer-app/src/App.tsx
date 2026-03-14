@@ -31,14 +31,11 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import cheongdamEmbeddedRaw from "@/embedded/cheongdam-2026-02-20.json?raw"
 import gwanggyoEmbeddedRaw from "@/embedded/gwanggyo-2026-02-20.json?raw"
 import pangyoEmbeddedRaw from "@/embedded/pangyo-2026-02-20.json?raw"
 import haenggungEmbeddedRaw from "@/embedded/haenggung-2026-02-26.json?raw"
 import daebudoPensionEmbeddedRaw from "@/embedded/daebudo-pension-2026-02-26.json?raw"
 import seoulPartyroomEmbeddedRaw from "@/embedded/seoul-partyroom-2026-02-26.json?raw"
-import changsinEmbeddedRaw from "@/embedded/changsin-2026-03-12.json?raw"
-import sujiLineEmbeddedRaw from "@/embedded/suji-line-2026-03-12.json?raw"
 import petFriendlySeoulEmbeddedRaw from "@/embedded/pet-friendly-seoul-2026-03-14.json?raw"
 
 type ColumnType = "text" | "number" | "boolean"
@@ -329,13 +326,7 @@ const CENTER_SEARCH_ENDPOINT = "https://nominatim.openstreetmap.org/search"
 const CENTER_SEARCH_FALLBACK_ENDPOINT = "https://photon.komoot.io/api/"
 const CENTER_SEARCH_LIMIT = 8
 const EMBEDDED_DATASETS: EmbeddedDataset[] = [
-  {
-    id: "cheongdam-2026-02-20",
-    label: "청담 (2026-02-20)",
-    filename: "cheongdam-2026-02-20.json",
-    jsonText: cheongdamEmbeddedRaw,
-  },
-  {
+{
     id: "gwanggyo-2026-02-20",
     label: "광교 (2026-02-20)",
     filename: "gwanggyo-2026-02-20.json",
@@ -364,18 +355,6 @@ const EMBEDDED_DATASETS: EmbeddedDataset[] = [
     label: "서울 파티룸 (2026-02-26)",
     filename: "seoul-partyroom-2026-02-26.json",
     jsonText: seoulPartyroomEmbeddedRaw,
-  },
-  {
-    id: "changsin-2026-03-12",
-    label: "창신기지 (2026-03-12)",
-    filename: "changsin-2026-03-12.json",
-    jsonText: changsinEmbeddedRaw,
-  },
-  {
-    id: "suji-line-2026-03-12",
-    label: "수지신분당선 5역 (2026-03-12)",
-    filename: "suji-line-2026-03-12.json",
-    jsonText: sujiLineEmbeddedRaw,
   },
   {
     id: "pet-friendly-seoul-2026-03-14",
