@@ -39,6 +39,7 @@ import daebudoPensionEmbeddedRaw from "@/embedded/daebudo-pension-2026-02-26.jso
 import seoulPartyroomEmbeddedRaw from "@/embedded/seoul-partyroom-2026-02-26.json?raw"
 import changsinEmbeddedRaw from "@/embedded/changsin-2026-03-12.json?raw"
 import sujiLineEmbeddedRaw from "@/embedded/suji-line-2026-03-12.json?raw"
+import petFriendlySeoulEmbeddedRaw from "@/embedded/pet-friendly-seoul-2026-03-14.json?raw"
 
 type ColumnType = "text" | "number" | "boolean"
 type RawRecord = Record<string, unknown>
@@ -375,6 +376,12 @@ const EMBEDDED_DATASETS: EmbeddedDataset[] = [
     label: "수지신분당선 5역 (2026-03-12)",
     filename: "suji-line-2026-03-12.json",
     jsonText: sujiLineEmbeddedRaw,
+  },
+  {
+    id: "pet-friendly-seoul-2026-03-14",
+    label: "서울 반려동물 동반 (2026-03-14)",
+    filename: "pet-friendly-seoul-2026-03-14.json",
+    jsonText: petFriendlySeoulEmbeddedRaw,
   },
 ]
 
