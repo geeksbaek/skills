@@ -349,6 +349,11 @@ const EMBEDDED_DATASETS: EmbeddedDataset[] = [
     label: "서울 반려동물 동반 (2026-03-14)",
     filename: "pet-friendly-seoul-2026-03-14.json",
   },
+  {
+    id: "songdo-convensia-2026-04-28",
+    label: "송도 컨벤시아 3km (2026-04-28)",
+    filename: "songdo-convensia-2026-04-28.json",
+  },
 ]
 
 const numFmt = new Intl.NumberFormat("ko-KR")
