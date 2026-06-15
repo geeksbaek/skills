@@ -354,6 +354,11 @@ const EMBEDDED_DATASETS: EmbeddedDataset[] = [
     label: "송도 컨벤시아 3km (2026-04-28)",
     filename: "songdo-convensia-2026-04-28.json",
   },
+  {
+    id: "uiwang-baekun-2026-06-16",
+    label: "의왕 백운밸리 1.5km (2026-06-16)",
+    filename: "uiwang-baekun-2026-06-16.json",
+  },
 ]
 
 const numFmt = new Intl.NumberFormat("ko-KR")
