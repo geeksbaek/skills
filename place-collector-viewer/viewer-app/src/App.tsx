@@ -363,6 +363,46 @@ const EMBEDDED_DATASETS: EmbeddedDataset[] = [
 
 const numFmt = new Intl.NumberFormat("ko-KR")
 
+// iPadOS Safari는 데스크톱(Macintosh) UA로 위장하므로 터치 포인트로 보강 감지한다.
+function isMobileDevice(): boolean {
+  if (typeof navigator === "undefined") return false
+  const ua = navigator.userAgent
+  return (
+    /iPhone|iPad|iPod|Android/i.test(ua) ||
+    (navigator.maxTouchPoints > 1 && /Macintosh/.test(ua))
+  )
+}
+
+// 모바일에서는 네이버맵 앱을 URL scheme으로 직접 띄우고, 앱이 없으면 웹으로 fallback한다.
+// 데스크톱은 기존처럼 새 탭에서 웹 지도를 연다.
+function openNaverPlace(placeId: number | string, webUrl: string): void {
+  if (!isMobileDevice()) {
+    window.open(webUrl, "_blank", "noopener,noreferrer")
+    return
+  }
+  const appname = window.location.hostname || "place-snapshot"
+  const scheme = `nmap://place?id=${placeId}&appname=${encodeURIComponent(appname)}`
+  let switched = false
+  const onVisibility = () => {
+    if (document.hidden) switched = true
+  }
+  document.addEventListener("visibilitychange", onVisibility)
+  const timer = window.setTimeout(() => {
+    document.removeEventListener("visibilitychange", onVisibility)
+    // 앱이 열렸다면 페이지가 백그라운드로 전환되어 switched=true가 되고 fallback은 취소된다.
+    if (!switched) window.location.href = webUrl
+  }, 1500)
+  window.addEventListener(
+    "pagehide",
+    () => {
+      window.clearTimeout(timer)
+      document.removeEventListener("visibilitychange", onVisibility)
+    },
+    { once: true },
+  )
+  window.location.href = scheme
+}
+
 function formatBytesToLabel(size: number): string {
   if (!Number.isFinite(size) || size <= 0) return "0 B"
   if (size < 1024) return `${size} B`
@@ -1787,6 +1827,12 @@ function App() {
             href={row.mapUrl}
             target="_blank"
             rel="noreferrer noopener"
+            onClick={(e) => {
+              if (isMobileDevice()) {
+                e.preventDefault()
+                openNaverPlace(row.id, row.mapUrl)
+              }
+            }}
           >
             <span data-ui={`table-name-link-label-${uiToken(row.id)}`} className="truncate">{name}</span>
             <ExternalLink data-ui={`table-name-link-icon-${uiToken(row.id)}`} className="size-3 shrink-0 opacity-70" />
