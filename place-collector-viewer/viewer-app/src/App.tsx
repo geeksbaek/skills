@@ -373,48 +373,15 @@ function isMobileDevice(): boolean {
   )
 }
 
-// 모바일에서는 네이버맵 앱을 URL scheme으로 직접 띄우고, 앱이 없으면 웹으로 fallback한다.
+// 모바일에서는 네이버맵 앱을 URL scheme으로 직접 띄운다(웹 fallback 없음).
 // 데스크톱은 기존처럼 새 탭에서 웹 지도를 연다.
-//
-// iOS에서 앱이 열리면 페이지가 백그라운드로 가는데, 이때 setTimeout이 지연됐다가
-// 다시 Safari로 돌아올 때 밀린 fallback이 실행되어 두 번째 호출부터 웹이 열리는 문제가 있다.
-// 이를 막기 위해 (1) blur/visibilitychange/pagehide 어느 것이든 앱 전환이 감지되면
-// 타이머를 즉시 취소하고, (2) 타이머가 뒤늦게 깨어나더라도 숨김 상태이거나 예정 시각을
-// 크게 넘겼으면(=백그라운드에서 밀림) fallback을 건너뛴다.
 function openNaverPlace(placeId: number | string, webUrl: string): void {
   if (!isMobileDevice()) {
     window.open(webUrl, "_blank", "noopener,noreferrer")
     return
   }
   const appname = window.location.hostname || "place-snapshot"
-  const scheme = `nmap://place?id=${placeId}&appname=${encodeURIComponent(appname)}`
-  const FALLBACK_MS = 1200
-  const start = Date.now()
-  let timer = 0
-  let done = false
-  const cleanup = () => {
-    if (done) return
-    done = true
-    window.clearTimeout(timer)
-    document.removeEventListener("visibilitychange", onVisibility)
-    window.removeEventListener("pagehide", cleanup)
-    window.removeEventListener("blur", cleanup)
-  }
-  const onVisibility = () => {
-    if (document.hidden) cleanup()
-  }
-  // 앱 전환 신호(어느 것이든)가 오면 fallback을 취소한다.
-  document.addEventListener("visibilitychange", onVisibility)
-  window.addEventListener("pagehide", cleanup)
-  window.addEventListener("blur", cleanup)
-  timer = window.setTimeout(() => {
-    const drifted = Date.now() - start > FALLBACK_MS * 2
-    cleanup()
-    // 숨김 상태이거나 타이머가 크게 밀렸으면 앱이 열린 것으로 보고 웹 fallback을 막는다.
-    if (document.hidden || drifted) return
-    window.location.href = webUrl
-  }, FALLBACK_MS)
-  window.location.href = scheme
+  window.location.href = `nmap://place?id=${placeId}&appname=${encodeURIComponent(appname)}`
 }
 
 function formatBytesToLabel(size: number): string {
