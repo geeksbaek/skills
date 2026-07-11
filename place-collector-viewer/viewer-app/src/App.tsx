@@ -229,6 +229,9 @@ const RAW_FIELD_LABELS: Record<string, string> = {
   isNx: "확장 수집 여부",
   keywords: "키워드 목록",
   microReview: "마이크로 리뷰",
+  menus: "메뉴 목록",
+  menusFetchedAt: "메뉴 수집 시각",
+  menuSource: "메뉴 출처",
   newBusinessHours: "신규 영업시간",
 }
 
@@ -384,13 +387,6 @@ function openNaverPlace(placeId: number | string, webUrl: string): void {
   window.location.href = `nmap://place?id=${placeId}&appname=${encodeURIComponent(appname)}`
 }
 
-function formatBytesToLabel(size: number): string {
-  if (!Number.isFinite(size) || size <= 0) return "0 B"
-  if (size < 1024) return `${size} B`
-  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`
-  return `${(size / (1024 * 1024)).toFixed(1)} MB`
-}
-
 function toNumOrNull(value: unknown): number | null {
   if (value === null || value === undefined) return null
   if (typeof value === "number") return Number.isFinite(value) ? value : null
@@ -417,6 +413,46 @@ function toText(value: unknown): string {
   } catch {
     return String(value)
   }
+}
+
+function extractMenuSearchText(raw: RawRecord): string {
+  const menuTexts: string[] = []
+  const seen = new Set<unknown>()
+
+  const appendMenus = (value: unknown) => {
+    if (!Array.isArray(value) || seen.has(value)) return
+    seen.add(value)
+
+    for (const item of value) {
+      if (!item || typeof item !== "object") continue
+      const menu = item as Record<string, unknown>
+      menuTexts.push([
+        menu.name,
+        menu.nameForBlogReview,
+        menu.description,
+        menu.desc,
+        menu.price,
+        menu.groupName,
+      ].map(toText).filter(Boolean).join(" "))
+    }
+  }
+
+  appendMenus(raw.menus)
+  appendMenus(raw.baeminMenus)
+
+  const baemin = raw.baemin
+  if (baemin && typeof baemin === "object") {
+    const baeminRecord = baemin as Record<string, unknown>
+    appendMenus(baeminRecord.menus)
+    if (Array.isArray(baeminRecord.menuGroups)) {
+      for (const group of baeminRecord.menuGroups) {
+        if (!group || typeof group !== "object") continue
+        appendMenus((group as Record<string, unknown>).menus)
+      }
+    }
+  }
+
+  return menuTexts.filter(Boolean).join(" ")
 }
 
 function uiToken(value: unknown): string {
@@ -774,13 +810,14 @@ function normalizeRecord(raw: RawRecord, fallbackId: string, index: number): Pla
   const keywordDisplayNames = Array.isArray(raw.details)
     ? raw.details.map((d: unknown) => (d as { displayName?: string }).displayName || "").join(" ")
     : ""
+  const menuText = extractMenuSearchText(raw)
 
   const _searchText = [
     placeId, name, category, roadAddress, commonAddress, options, phone,
     topKeyword.label, keywordText, keywordDisplayNames,
     openDescText, priceCategoryText,
     parkingDetail, detailConveniences, conveniencesTextVal,
-    broadcastInfo, microReview, regularClosedDays, feedsText,
+    broadcastInfo, microReview, regularClosedDays, feedsText, menuText,
   ].join(" ").toLowerCase()
 
   return {
@@ -1602,7 +1639,7 @@ function App() {
       const text = await res.text()
       setSelectedFileName(selectedEmbeddedDataset.filename)
       loadJsonText(text)
-    } catch (e) {
+    } catch {
       setSelectedFileName(`${selectedEmbeddedDataset.filename} (로드 실패)`)
       setLoading(false)
     }

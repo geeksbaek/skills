@@ -10,7 +10,7 @@ description: >
 
 # Place Collector Viewer
 
-Use Chrome DevTools MCP to collect Naver place data, save it as JSON, then auto-open and auto-import it in the local datagrid viewer.
+Use Chrome DevTools MCP to collect Naver place data, save it as JSON, then auto-open and auto-import it in the local datagrid viewer. For bulk menu enrichment of existing JSON datasets, use `agent-browser` attached to a user-opened Chrome CDP session.
 
 ## Goal
 
@@ -26,6 +26,7 @@ Use Chrome DevTools MCP to collect Naver place data, save it as JSON, then auto-
 ## Preconditions
 
 - Use Chrome DevTools MCP.
+- For `scripts/enrich-menus.mjs --cdp`, connect `agent-browser` to a normal Chrome session that has already opened Naver Maps.
 - Keep `/Users/jongyeol/.claude/skills/place-collector-viewer/assets/place-datagrid-view.html` available.
 
 ## Non-negotiable Rules
@@ -70,7 +71,18 @@ Use Chrome DevTools MCP to collect Naver place data, save it as JSON, then auto-
 
 - Run `Step 2` (`getVisitorReviewStats`, batch 50)
 - Run `Step 3` (`getPlaceDetail`, batch 50)
+- Run `Step 3B` (`getPlaceMenus`, batch 20; Naver + Baemin menu sources)
 - Run `Step 4` (`getFeeds`, batch 50 with sequential fallback)
+
+For all bundled datasets, prefer the resumable CLI after opening Chrome with CDP port `9222` and visiting Naver Maps:
+
+```bash
+cd viewer-app
+npm run enrich:menus -- --batch-size 50 --checkpoint-every 1000
+npm run verify:menus
+```
+
+The menu collector reads the current Naver WTM token from `agent-browser` network records, performs GraphQL queries inside that Chrome session, checkpoints JSON files, and synchronizes `viewer-app/public/data` with `assets/data`. Do not persist the WTM token.
 
 ### 6) Export JSON
 
@@ -108,7 +120,7 @@ Status check script:
 ### 8) Report
 
 - Include parameters (`queryTexts`, `center`, `radiusMeters`, `gridSize`, `display`)
-- Include counts (`totalUnique`, retry/error summary, enrichment status)
+- Include counts (`totalUnique`, retry/error summary, review/detail/menu/feed enrichment status)
 - Include `outputJsonPath`
 - Include viewer load result (`shown/total`)
 
@@ -122,4 +134,6 @@ Status check script:
 - `references/naver-map-guide.md`: collection/enrichment/export scripts
 - `references/troubleshooting.md`: MCP recovery steps
 - `scripts/extract-dp.py`: JSON cleanup helper for MCP output
+- `scripts/enrich-menus.mjs`: resumable GraphQL menu enrichment through `agent-browser --cdp`
+- `scripts/verify-menu-datasets.mjs`: menu coverage and asset-sync verifier
 - `assets/place-datagrid-view.html`: local datagrid viewer

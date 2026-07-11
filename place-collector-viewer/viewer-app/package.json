@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "enrich:menus": "node ../scripts/enrich-menus.mjs --sync-assets --cdp 9222",
+    "verify:menus": "node ../scripts/verify-menu-datasets.mjs --check-assets",
     "preview": "vite preview"
   },
   "dependencies": {

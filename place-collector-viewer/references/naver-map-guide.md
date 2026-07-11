@@ -411,6 +411,170 @@ async () => {
 }
 ```
 
+## Step 3B: 메뉴 전체 배치 보강
+
+- 네이버 기본 메뉴와 배달의민족 연동 메뉴를 모두 수집한다.
+- `menusFetchedAt`이 없는 장소만 대상으로 하므로 중단 후 다시 실행할 수 있다.
+- 메뉴가 없는 장소도 `menuFetchStatus: "no_data"`와 빈 `menus`를 저장해 수집 완료 여부를 구분한다.
+- `menus`는 메뉴명, 가격, 설명, 이미지, 대표 여부, 그룹, 원본 출처를 보존한다.
+
+```javascript
+async () => {
+  const all = JSON.parse(localStorage.getItem('__dp__') || '{}');
+  const targetIds = Object.keys(all).filter(id => !all[id]?.menusFetchedAt);
+  if (targetIds.length === 0) return { menuFetched: 0, source: 'allCached' };
+
+  const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+  const query = `query getPlaceMenus($input: PlaceDetailInput) {
+    placeDetail(input: $input) {
+      base { id name }
+      menuSource { name link clickCode }
+      menus(source: [tpirates]) {
+        name price recommend nameForBlogReview description id index
+      }
+      baemin {
+        menuGroups {
+          order id name isRepresentative
+          menus {
+            id name desc price source isRepresentative menuId
+          }
+        }
+        menus {
+          id name desc price source isRepresentative menuId
+        }
+      }
+    }
+  }`;
+
+  const normalizeMenus = (detail) => {
+    const result = [];
+    const seen = new Set();
+    const append = (menus, source, group = null) => {
+      for (const menu of Array.isArray(menus) ? menus : []) {
+        if (!menu?.name) continue;
+        const normalized = {
+          id: String(menu.id || menu.menuId || ''),
+          name: String(menu.name || ''),
+          price: menu.price ?? '',
+          description: menu.description ?? menu.desc ?? '',
+          source,
+          ...(menu.nameForBlogReview && menu.nameForBlogReview !== menu.name ? { nameForBlogReview: menu.nameForBlogReview } : {}),
+          ...(menu.isRepresentative || menu.recommend ? { isRepresentative: true } : {}),
+          ...(Number.isFinite(menu.index) ? { index: menu.index } : {}),
+          ...(group ? { groupId: group.id || '', groupName: group.name || '' } : {})
+        };
+        const key = [source, group?.id || '', menu.id || menu.menuId || '', menu.name, menu.price].join('|');
+        if (seen.has(key)) continue;
+        seen.add(key);
+        result.push(normalized);
+      }
+    };
+
+    append(detail?.menus, 'naver');
+    for (const group of detail?.baemin?.menuGroups || []) append(group.menus, 'baemin', group);
+    append(detail?.baemin?.menus, 'baemin');
+    return result;
+  };
+
+  let fetched = 0;
+  let withMenus = 0;
+  let failed = 0;
+  let retriesTotal = 0;
+  const errors = [];
+  const BATCH = 20;
+
+  for (let cursor = 0; cursor < targetIds.length; cursor += BATCH) {
+    const batch = targetIds.slice(cursor, cursor + BATCH);
+    const wtmHeader = btoa(JSON.stringify({ arg: batch[0], type: 'restaurant', source: 'place' }));
+    let retries = 0;
+
+    while (retries < 3) {
+      try {
+        const res = await fetch('https://pcmap-api.place.naver.com/graphql', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-wtm-graphql': wtmHeader },
+          body: JSON.stringify(batch.map(id => ({
+            operationName: 'getPlaceMenus',
+            variables: { input: { deviceType: 'pcmap', id, isNx: false } },
+            query
+          })))
+        });
+
+        if (!res.ok) {
+          if ((res.status === 429 || res.status >= 500) && retries < 2) {
+            retries++;
+            retriesTotal++;
+            await sleep(Math.min(5000, 600 * (2 ** retries)) + Math.floor(Math.random() * 350));
+            continue;
+          }
+          failed += batch.length;
+          errors.push({ cursor, ids: batch, status: res.status });
+          break;
+        }
+
+        const rows = await res.json();
+        const fetchedAt = new Date().toISOString();
+        rows.forEach((row, index) => {
+          const id = String(row?.data?.placeDetail?.base?.id || batch[index] || '');
+          const detail = row?.data?.placeDetail;
+          if (!all[id] || !detail) {
+            failed++;
+            errors.push({ id, error: row?.errors?.[0]?.message || 'placeDetail missing' });
+            return;
+          }
+
+          const menus = normalizeMenus(detail);
+          all[id].menus = menus;
+          all[id].menuSource = detail.menuSource || null;
+          all[id].menusFetchedAt = fetchedAt;
+          all[id].menuFetchStatus = menus.length ? 'ok' : 'no_data';
+          fetched++;
+          if (menus.length) withMenus++;
+        });
+
+        localStorage.setItem('__dp__', JSON.stringify(all));
+        await sleep(220);
+        break;
+      } catch (error) {
+        retries++;
+        retriesTotal++;
+        if (retries >= 3) {
+          failed += batch.length;
+          errors.push({ cursor, ids: batch, error: String(error) });
+          break;
+        }
+        await sleep(Math.min(5000, 600 * (2 ** retries)) + Math.floor(Math.random() * 350));
+      }
+    }
+  }
+
+  localStorage.setItem('__dp__', JSON.stringify(all));
+  return {
+    targetCount: targetIds.length,
+    menuFetched: fetched,
+    placesWithMenus: withMenus,
+    menuFailed: failed,
+    retries: retriesTotal,
+    errors: errors.slice(0, 20)
+  };
+}
+```
+
+### 기존 JSON 전체 메뉴 보강 (`agent-browser` + Chrome CDP)
+
+Chrome을 CDP 포트 `9222`로 실행하고 그 Chrome에서 네이버 지도를 연 다음 실행한다. 수집기는 페이지의 정상 GraphQL 요청에서 현재 WTM 토큰을 읽어 같은 Chrome 컨텍스트에서 배치 쿼리를 실행한다. 토큰 값은 파일에 저장하지 않는다.
+
+```bash
+cd viewer-app
+npm run enrich:menus -- --batch-size 50 --checkpoint-every 1000
+npm run verify:menus
+```
+
+- 1,000곳마다 원본 JSON을 체크포인트 저장한다.
+- 동일 `placeId`가 여러 데이터셋에 있으면 한 번만 조회하고 모든 레코드에 병합한다.
+- `placeDetail`이 없는 삭제/비공개 장소는 `menuFetchStatus: "unavailable"`과 오류를 기록한다.
+- 완료 후 `viewer-app/public/data`와 `assets/data`가 동일한지 검증한다.
+
 ## Step 4: 소식(Feeds) 배치 보강
 
 ```javascript
@@ -538,5 +702,5 @@ python3 /Users/jongyeol/.claude/skills/place-collector-viewer/scripts/extract-dp
 1. Step 0
 2. Step 1A (`gridSize=6~8`) 기본 풀 수집
 3. 필요 시 Step 1A를 `gridSize=1`로 재실행 후 Step 1B로 방식 비교
-4. Step 2, Step 3, Step 4 보강
+4. Step 2, Step 3, Step 3B, Step 4 보강
 5. Step 5 추출
